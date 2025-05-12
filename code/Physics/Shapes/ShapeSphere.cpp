@@ -32,7 +32,9 @@ ShapeSphere::InertiaTensor
 Mat3 ShapeSphere::InertiaTensor() const {
 	Mat3 tensor;
 	
-	// TODO: Add code
+	tensor.rows[0][0] = 2.0f / 5.0f * m_radius * m_radius;
+	tensor.rows[1][1] = tensor.rows[0][0];
+	tensor.rows[2][2] = tensor.rows[0][0];
 
 	return tensor;
 }
@@ -61,4 +63,9 @@ Bounds ShapeSphere::GetBounds() const {
 	// TODO: Add code
 
 	return tmp;
+}
+
+float ShapeSphere::GetRadius()
+{
+	return m_radius;
 }

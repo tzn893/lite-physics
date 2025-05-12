@@ -8,10 +8,13 @@
 #include <string.h>
 
 #include <direct.h>
+#include <filesystem>
+
 #define GetCurrentDir _getcwd
 
 static char g_ApplicationDirectory[ FILENAME_MAX ];
 static bool g_WasInitialized = false;
+
 
 /*
 =================================
@@ -53,8 +56,17 @@ Opens the file and stores it in data
 bool GetFileData( const char * fileNameLocal, unsigned char ** data, unsigned int & size ) {
 	InitializeFileSystem();
 
-	char fileName[ 2048 ];
-	sprintf( fileName, "%s/%s", g_ApplicationDirectory, fileNameLocal );
+	char fileName[2048];
+
+	std::filesystem::path p(fileNameLocal);
+	if (p.is_absolute())
+	{
+		strcpy(fileName, fileNameLocal);
+	}
+	else
+	{
+		sprintf(fileName, "%s/%s", g_ApplicationDirectory, fileNameLocal);
+	}
 	
 	// open file for reading
 	FILE * file = fopen( fileName, "rb" );

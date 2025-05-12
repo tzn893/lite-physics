@@ -2,10 +2,10 @@
 //  model.cpp
 //
 #include "model.h"
-#include "../Math/Vector.h"
-#include "../Fileio.h"
+#include "Math/Vector.h"
+#include "Fileio.h"
 #include <string.h>
-#include "../Physics/Shapes.h"
+#include "Physics/Shapes.h"
 #include <algorithm>
 
 #pragma warning( disable : 4996 )
@@ -385,6 +385,61 @@ void FillSphere( Model & model, const float radius ) {
 	}
 }
 
+
+void FillPlane(Model& model, float width, float height)
+{
+	Vec3 planeVerts[4] =
+	{
+		Vec3(-width / 2.0f, -height / 2.0f, 0.0f),
+		Vec3(width / 2.0f, -height / 2.0f, 0.0f),
+		Vec3(width / 2.0f, height / 2.0f, 0.0f),
+		Vec3(-width / 2.0f, height / 2.0f, 0.0f)
+	};
+
+	Vec2 planeSts[4] =
+	{
+		Vec2(0, 0),
+		Vec2(1, 0),
+		Vec2(1, 1),
+		Vec2(0, 1)
+	};
+	Vec3 planeNormal = Vec3(0, 0, 1);
+	Vec3 planeTangent = Vec3(1, 0, 0);
+
+	model.m_vertices.resize(4);
+	
+	for (int i = 0;i < 4; i++)
+	{
+		model.m_vertices[i].xyz[0] = planeVerts[i][0];
+		model.m_vertices[i].xyz[1] = planeVerts[i][1];
+		model.m_vertices[i].xyz[2] = planeVerts[i][2];
+
+		model.m_vertices[i].st[0] = planeSts[i][0];
+		model.m_vertices[i].st[1] = planeSts[i][1];
+
+		model.m_vertices[i].norm[0] = FloatToByte_n11(planeNormal[0]);
+		model.m_vertices[i].norm[1] = FloatToByte_n11(planeNormal[1]);
+		model.m_vertices[i].norm[2] = FloatToByte_n11(planeNormal[2]);
+
+		model.m_vertices[i].tang[0] = FloatToByte_n11(planeTangent[0]);
+		model.m_vertices[i].tang[1] = FloatToByte_n11(planeTangent[1]);
+		model.m_vertices[i].tang[2] = FloatToByte_n11(planeTangent[2]);
+	}
+
+	unsigned int indices[6] =
+	{
+		0, 1, 2,
+		0, 2, 3
+	};
+	model.m_indices.resize(6);
+	
+	for (int i = 0;i < 6; i++)
+	{
+		model.m_indices[i] = indices[i];
+	}
+}
+
+
 /*
 ====================================================
 Model::BuildFromShape
@@ -485,7 +540,17 @@ bool Model::BuildFromShape( const Shape * shape ) {
 			m_indices.push_back( hullTris[ i ].c );
 		}
 	}
+	else if (shape->GetType() == Shape::SHAPE_PLANE)
+	{
+		const ShapePlane* shapePlane = (const ShapePlane*)shape;
+		Vec2 planeExtent = shapePlane->GetExtent();
 
+		m_vertices.clear();
+		m_indices.clear();
+
+		FillPlane(*this, planeExtent.x, planeExtent.y);
+	}
+	
 	return true;
 }
 

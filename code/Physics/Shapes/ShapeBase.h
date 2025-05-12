@@ -26,6 +26,8 @@ public:
 		SHAPE_SPHERE,
 		SHAPE_BOX,
 		SHAPE_CONVEX,
+		SHAPE_PLANE,
+		SHAPE_COUNT
 	};
 	virtual shapeType_t GetType() const = 0;
 
@@ -36,3 +38,5 @@ public:
 protected:
 	Vec3 m_centerOfMass;
 };
+
+using EShape = Shape::shapeType_t;

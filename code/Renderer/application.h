@@ -19,20 +19,85 @@
 #include "Renderer/shader.h"
 #include "Renderer/FrameBuffer.h"
 
+
+#define DEFINE_APPLICATION_ENTRANCE(App) int main( int argc, char * argv[] ) {\
+	g_application = new App;\
+	g_application->Initialize();\
+	\
+	g_application->MainLoop();\
+	\
+	delete g_application;\
+	return 0;\
+}
+
+
 /*
 ====================================================
 Application
 ====================================================
 */
+
+enum EInputKey
+{
+	IK_W = 0,
+	IK_A,
+	IK_S,
+	IK_D,
+	IK_Q,
+	IK_E,
+	IK_F,
+	IK_G,
+	IK_H,
+	IK_J,
+	IK_K,
+	IK_L,
+	IK_U,
+	IK_I,
+	IK_O,
+	IK_COUNT
+};
+
+
+class InputBuffer
+{
+	friend class Application;
+
+	void KeyPress(EInputKey key);
+	void KeyRelease(EInputKey key);
+	void Update();
+
+	enum EInputKeyState
+	{
+		EIS_PRESSED,
+		EIS_RELEASED,
+		EIS_HOLD,
+		EIS_NONE,
+	};
+
+	EInputKeyState m_keyState[IK_COUNT];
+
+public:
+	InputBuffer();
+
+	bool GetKeyDown(EInputKey inputKey);
+
+	bool GetKeyHold(EInputKey inputKey);
+
+	bool GetKeyUp(EInputKey inputKey);
+};
+
 class Application {
 public:
 	Application() : m_isPaused( true ), m_stepFrame( false ) {}
-	~Application();
+	virtual ~Application();
 
 	void Initialize();
 	void MainLoop();
 
-private:
+	virtual void BuildScene(class SceneBuilder* builder);
+	virtual void UpdateScene(float dt_sec);
+
+protected:
 	std::vector< const char * > GetGLFWRequiredExtensions() const;
 
 	void InitializeGLFW();
@@ -50,12 +115,14 @@ private:
 	static void OnMouseWheelScrolled( GLFWwindow * window, double x, double y );
 	static void OnKeyboard( GLFWwindow * window, int key, int scancode, int action, int modifiers );
 
-private:
+protected:
 	class Scene * m_scene;
 
 	GLFWwindow * m_glfwWindow;
 
 	DeviceContext m_deviceContext;
+
+	InputBuffer m_inputBuffer;
 
 	//
 	//	Uniform Buffer

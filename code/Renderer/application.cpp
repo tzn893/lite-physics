@@ -15,7 +15,7 @@
 
 #include "Renderer/OffscreenRenderer.h"
 
-#include "Scene.h"
+#include "Physics/Scene.h"
 
 Application * g_application = NULL;
 
@@ -73,13 +73,15 @@ void Application::Initialize() {
 	InitializeVulkan();
 
 	m_scene = new Scene;
-	m_scene->Initialize();
+	// m_scene->Initialize();
+	SceneBuilder* builder = m_scene->BuildScene();
+	BuildScene(builder);
 	m_scene->Reset();
 
 	m_models.reserve( m_scene->m_bodies.size() );
 	for ( int i = 0; i < m_scene->m_bodies.size(); i++ ) {
 		Model * model = new Model();
-		model->BuildFromShape( m_scene->m_bodies[ i ].m_shape );
+		model->BuildFromShape( m_scene->m_bodies[ i ]->GetShape());
 		model->MakeVBO( &m_deviceContext );
 
 		m_models.push_back( model );
@@ -437,6 +439,174 @@ void Application::Keyboard( int key, int scancode, int action, int modifiers ) {
 	if ( GLFW_KEY_Y == key && ( GLFW_PRESS == action || GLFW_REPEAT == action ) ) {
 		m_stepFrame = m_isPaused && !m_stepFrame;
 	}
+
+
+	if (GLFW_KEY_A == key )
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_A);
+		}
+		else if(GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_A);
+		}
+	}
+	else if (GLFW_KEY_D == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_D);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_D);
+		}
+	}
+	else if (GLFW_KEY_W == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_W);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_W);
+		}
+	}
+	else if (GLFW_KEY_S == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_S);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_S);
+		}
+	}
+	else if (GLFW_KEY_Q == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_Q);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_Q);
+		}
+	}
+	else if (GLFW_KEY_E == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_E);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_E);
+		}
+	}
+	else if (GLFW_KEY_F == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_F);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_F);
+		}
+	}
+	else if (GLFW_KEY_G == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_G);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_G);
+		}
+	}
+	else if (GLFW_KEY_H == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_H);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_H);
+		}
+	}
+	else if (GLFW_KEY_J == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_J);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_J);
+		}
+	}
+	else if (GLFW_KEY_K == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_K);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_K);
+		}
+	}
+	else if (GLFW_KEY_L == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_L);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_L);
+		}
+	}
+	else if (GLFW_KEY_U == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_U);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_U);
+		}
+		}
+	else if (GLFW_KEY_I == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_I);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_I);
+		}
+		}
+	else if (GLFW_KEY_O == key)
+	{
+		if (GLFW_RELEASE == action)
+		{
+			m_inputBuffer.KeyRelease(IK_O);
+		}
+		else if (GLFW_PRESS == action)
+		{
+			m_inputBuffer.KeyPress(IK_O);
+		}
+	}
+	
 }
 
 /*
@@ -460,7 +630,7 @@ void Application::MainLoop() {
 			time = GetTimeMicroseconds();
 		}
 		timeLastFrame = time;
-		printf( "\ndt_ms: %.1f    ", dt_us * 0.001f );
+		// printf( "\ndt_ms: %.1f    ", dt_us * 0.001f );
 
 		// Get User Input
 		glfwPollEvents();
@@ -486,11 +656,14 @@ void Application::MainLoop() {
 		}
 		float dt_sec = dt_us * 0.001f * 0.001f;
 
+		// 用户自定义逻辑
+		UpdateScene(dt_sec);
+
 		// Run Update
 		if ( runPhysics ) {
 			int startTime = GetTimeMicroseconds();
 			for ( int i = 0; i < 2; i++ ) {
-				m_scene->Update( dt_sec * 0.5f );
+				m_scene->Update( dt_sec);
 			}
 			int endTime = GetTimeMicroseconds();
 
@@ -502,12 +675,23 @@ void Application::MainLoop() {
 			avgTime = ( avgTime * float( numSamples ) + dt_us ) / float( numSamples + 1 );
 			numSamples++;
 
-			printf( "frame dt_ms: %.2f %.2f %.2f", avgTime * 0.001f, maxTime * 0.001f, dt_us * 0.001f );
+			// printf( "frame dt_ms: %.2f %.2f %.2f", avgTime * 0.001f, maxTime * 0.001f, dt_us * 0.001f );
 		}
 
 		// Draw the Scene
 		DrawFrame();
+
+		m_inputBuffer.Update();
 	}
+}
+
+void Application::BuildScene(SceneBuilder* builder)
+{
+
+}
+
+void Application::UpdateScene(float dt_sec)
+{
 }
 
 /*
@@ -617,13 +801,13 @@ void Application::UpdateUniforms() {
 		//	Update the uniform buffer with the body positions/orientations
 		//
 		for ( int i = 0; i < m_scene->m_bodies.size(); i++ ) {
-			Body & body = m_scene->m_bodies[ i ];
+			Body* body = m_scene->m_bodies[ i ];
 
-			Vec3 fwd = body.m_orientation.RotatePoint( Vec3( 1, 0, 0 ) );
-			Vec3 up = body.m_orientation.RotatePoint( Vec3( 0, 0, 1 ) );
+			Vec3 fwd = body->GetOrientation().RotatePoint(Vec3(1, 0, 0));
+			Vec3 up = body->GetOrientation().RotatePoint( Vec3( 0, 0, 1 ) );
 
 			Mat4 matOrient;
-			matOrient.Orient( body.m_position, fwd, up );
+			matOrient.Orient( body->GetBodyPositionWorldSpace(), fwd, up);
 			matOrient = matOrient.Transpose();
 
 			// Update the uniform buffer with the orientation of this body
@@ -633,8 +817,8 @@ void Application::UpdateUniforms() {
 			renderModel.model = m_models[ i ];
 			renderModel.uboByteOffset = uboByteOffset;
 			renderModel.uboByteSize = sizeof( matOrient );
-			renderModel.pos = body.m_position;
-			renderModel.orient = body.m_orientation;
+			renderModel.pos = body->GetBodyPositionWorldSpace();
+			renderModel.orient = body->GetOrientation();
 			m_renderModels.push_back( renderModel );
 
 			uboByteOffset += m_deviceContext.GetAligendUniformByteOffset( sizeof( matOrient ) );
@@ -683,4 +867,54 @@ void Application::DrawFrame() {
 	//	End the render frame
 	//
 	m_deviceContext.EndFrame();
+}
+
+void InputBuffer::KeyPress(EInputKey key)
+{
+	m_keyState[key] = EIS_PRESSED;
+}
+
+void InputBuffer::KeyRelease(EInputKey key)
+{
+	m_keyState[key] = EIS_RELEASED;
+}
+
+void InputBuffer::Update()
+{
+	// Update the input buffer with the current state of the keys
+	for (int i = 0; i < EInputKey::IK_COUNT; i++)
+	{
+		if (m_keyState[i] == EIS_PRESSED)
+		{
+			m_keyState[i] = EIS_HOLD;
+		}
+		else if (m_keyState[i] == EIS_RELEASED)
+		{
+			m_keyState[i] = EIS_NONE;
+		}
+	}
+}
+
+InputBuffer::InputBuffer()
+{
+	for (int i = 0; i < IK_COUNT; i++)
+	{
+		m_keyState[i] = EIS_NONE;
+	}
+
+}
+
+bool InputBuffer::GetKeyDown(EInputKey inputKey)
+{
+	return m_keyState[inputKey] == EIS_PRESSED;
+}
+
+bool InputBuffer::GetKeyHold(EInputKey inputKey)
+{
+	return m_keyState[inputKey] == EIS_HOLD;
+}
+
+bool InputBuffer::GetKeyUp(EInputKey inputKey)
+{
+	return m_keyState[inputKey] == EIS_RELEASED;
 }

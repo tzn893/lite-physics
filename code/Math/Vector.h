@@ -216,6 +216,10 @@ public:
 	Vec3 Cross( const Vec3 & rhs ) const;
 	float Dot( const Vec3 & rhs ) const;
 	
+	Vec3 Dir() const;
+
+	// 注意，这个Normalize是会改变当前对象的值
+	// 只是想获取方向可以用无副作用的版本 Vec3::Dir
 	const Vec3 & Normalize();
 	float GetMagnitude() const;
 	float GetLengthSqr() const { return Dot( *this ); }
@@ -380,6 +384,12 @@ inline Vec3 Vec3::Cross( const Vec3 & rhs ) const {
 inline float Vec3::Dot( const Vec3 & rhs ) const {
 	float temp = ( x * rhs.x ) + ( y * rhs.y ) + ( z * rhs.z );
 	return temp;
+}
+
+inline Vec3 Vec3::Dir() const
+{
+	Vec3 tmp = *this;
+	return tmp.Normalize();
 }
 
 inline const Vec3 & Vec3::Normalize() {

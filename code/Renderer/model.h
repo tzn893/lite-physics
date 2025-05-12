@@ -7,8 +7,8 @@
 #include <array>
 #include "DeviceContext.h"
 #include "Buffer.h"
-#include "../Math/Vector.h"
-#include "../Math/Quat.h"
+#include "Math/Vector.h"
+#include "Math/Quat.h"
 
 /*
 ====================================================

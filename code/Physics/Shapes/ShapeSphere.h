@@ -24,6 +24,8 @@ public:
 
 	shapeType_t GetType() const override { return SHAPE_SPHERE; }
 
+	float GetRadius();
+
 public:
 	float m_radius;
 };
