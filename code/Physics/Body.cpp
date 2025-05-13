@@ -13,6 +13,17 @@ Body::Body() :
 m_position( 0.0f ),
 m_orientation( 0.0f, 0.0f, 0.0f, 1.0f ),
 m_shape( NULL ){
+    m_enableCCD = false;
+}
+
+void Body::SetEnableCCD(bool enabled)
+{
+	m_enableCCD = enabled;
+}
+
+bool Body::CCDEnabled()
+{
+    return m_enableCCD;
 }
 
 void Body::Initialize(Vec3 pos, Quat ori, float mass, Shape* shape, float elasity, float firction)
@@ -94,6 +105,11 @@ void Body::ApplyTorch(Vec3 torch)
     }
 }
 
+Bounds Body::GetBounds()
+{
+    return m_shape->GetBounds(m_position, m_orientation);
+}
+
 Mat3 Body::GetInertiaTensorLocalSpace() const
 {
 	Mat3 tensor = m_shape->InertiaTensor();
@@ -149,7 +165,7 @@ Vec3 Body::GetCenterOfMassLocalSpace() const
 Vec3 Body::WorldSpacePointToLocalSpace(const Vec3& pt) const
 {
     Quat invOri = m_orientation.Inverse();
-    Vec3 relativePositionWorld = GetCenterOfMassWorldSpace() - pt;
+    Vec3 relativePositionWorld = pt - GetCenterOfMassWorldSpace();
 
 	Vec3 relativePositionLocal = invOri.RotatePoint(relativePositionWorld);
 	return relativePositionLocal;
@@ -183,18 +199,20 @@ void Body::UpdatePosition(float dt)
 	Vec3 accelAngular = GetInverseInertiaTensorWorldSpace() * 
         m_angularVelocity.Cross( GetInertialTensorWorldSpace() * m_angularVelocity);
 
-	m_angularVelocity += accelAngular * dt;
-
     Vec3 dangle = m_angularVelocity * dt;
     Quat dquat = Quat(dangle, dangle.GetMagnitude());
+
     // 更新角度
     m_orientation = dquat * m_orientation;
     m_orientation.Normalize();
     
+    m_angularVelocity += accelAngular * dt;
+
 	// 绕着质心旋转的中心点
     Vec3 posCM = GetCenterOfMassWorldSpace();
     Vec3 relativePosition = m_position - posCM;
     m_position = posCM + dquat.RotatePoint(relativePosition);
+
 }
 
 float Body::GetElasity() const

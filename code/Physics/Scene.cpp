@@ -7,6 +7,7 @@
 #include "Physics/Broadphase.h"
 
 #include "Physics/Shapes/ShapeFactory.h"
+#include <algorithm>
 
 
 Scene::~Scene() 
@@ -24,6 +25,9 @@ void Scene::Reset() {
 	{
 		m_builder->Reset();
 	}
+
+	m_contactBuffer.clear();
+	m_contactBuffer.resize(m_bodies.size() * m_bodies.size());
 }
 
 SceneBuilder* Scene::BuildScene()
@@ -38,6 +42,7 @@ SceneBuilder* Scene::BuildScene()
 
 void Scene::Update(const float dt_sec) {
 	// TODO: Add code
+	int frameContactCount = 0;
 
 	// 计算冲量
 	for (auto& body : m_bodies)
@@ -50,26 +55,59 @@ void Scene::Update(const float dt_sec) {
 
 	for (int i = 0; i < m_bodies.size(); i++)
 	{
-		for (int j = 0; j < m_bodies.size(); j++)
+		for (int j = i + 1; j < m_bodies.size(); j++)
 		{
-			if (i == j || 
-				(m_bodies[i]->HasInfintyMass() && m_bodies[j]->HasInfintyMass())
-			)
+			if ((m_bodies[i]->HasInfintyMass() && m_bodies[j]->HasInfintyMass()))
 				continue;
 
 			contact_t contact;
 
-			if (Intersect(m_bodies[i], m_bodies[j], contact))
+			if (Intersect(m_bodies[i], m_bodies[j], dt_sec, contact))
 			{
-				ResolveContact(contact);
+				m_contactBuffer[frameContactCount++] = contact;// ResolveContact(contact);
 			}
 		}
 	}
 
+	// 按 time of impact对所有contact排序
+	std::sort(m_contactBuffer.begin(), m_contactBuffer.begin() + frameContactCount, 
+		[](const contact_t& a, const contact_t& b) 
+		{
+			return a.timeOfImpact < b.timeOfImpact;
+		}
+	);
+
+
+	// 按时间顺序依次处理接触点
+	float accumlatedTime = 0.0;
+	// 按time of impact处理contact
+	for (int i = 0;i < frameContactCount;i++)
+	{
+		contact_t contact = m_contactBuffer[i];
+		float dt = contact.timeOfImpact - accumlatedTime;
+
+		if (contact.bodyA->HasInfintyMass() && contact.bodyB->HasInfintyMass())
+		{
+			continue;
+		}
+
+		if (dt != 0)
+		{
+			for (auto& body : m_bodies)
+			{
+				body->UpdatePosition(dt);
+			}
+		}
+
+		ResolveContact(m_contactBuffer[i]);
+		accumlatedTime += dt;
+	}
+
+	float remainingTime = dt_sec - accumlatedTime;
 	// 计算速度
 	for (auto& body : m_bodies)
 	{
-		body->UpdatePosition(dt_sec);
+		body->UpdatePosition(remainingTime);
 	}
 }
 

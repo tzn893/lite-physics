@@ -76,7 +76,9 @@ void Application::Initialize() {
 	// m_scene->Initialize();
 	SceneBuilder* builder = m_scene->BuildScene();
 	BuildScene(builder);
+	
 	m_scene->Reset();
+	Start();
 
 	m_models.reserve( m_scene->m_bodies.size() );
 	for ( int i = 0; i < m_scene->m_bodies.size(); i++ ) {
@@ -432,6 +434,7 @@ Application::Keyboard
 void Application::Keyboard( int key, int scancode, int action, int modifiers ) {
 	if ( GLFW_KEY_R == key && GLFW_RELEASE == action ) {
 		m_scene->Reset();
+		Start();
 	}
 	if ( GLFW_KEY_T == key && GLFW_RELEASE == action ) {
 		m_isPaused = !m_isPaused;

@@ -31,6 +31,8 @@ public:
     const Vec2 &	operator /= ( const float rhs );
 	float			operator [] ( const int idx ) const;
 	float &			operator [] ( const int idx );
+
+	Vec2			operator / (const Vec2& rhs) const;
 	
 	const Vec2 & Normalize();
 	float GetMagnitude() const;
@@ -149,6 +151,11 @@ inline float & Vec2::operator [] ( const int idx ) {
 	return ( &x )[ idx ];
 }
 
+inline Vec2 Vec2::operator/(const Vec2& rhs) const
+{
+	return Vec2(x / rhs.x, y / rhs.y);
+}
+
 inline const Vec2 & Vec2::Normalize() {
 	float mag = GetMagnitude();
 	float invMag = 1.0f / mag;
@@ -206,6 +213,7 @@ public:
 	Vec3			operator - ( const Vec3 & rhs ) const;
 	Vec3			operator * ( const float rhs ) const;
     Vec3			operator / ( const float rhs ) const;
+	Vec3			operator / (const Vec3& rhs) const;
 	const Vec3 &	operator *= ( const float rhs );
     const Vec3 &	operator /= ( const float rhs );
 	float			operator [] ( const int idx ) const;
@@ -348,6 +356,11 @@ inline Vec3 Vec3::operator / ( const float rhs ) const {
 	return temp;
 }
 
+inline Vec3 Vec3::operator/(const Vec3& rhs) const
+{
+	return Vec3(x / rhs.x, y / rhs.y, z / rhs.z);
+}
+
 inline const Vec3 & Vec3::operator *= ( const float rhs ) {
 	x *= rhs;
 	y *= rhs;
@@ -463,6 +476,7 @@ public:
 	const Vec4 &	operator -= ( const Vec4 & rhs );
     const Vec4 &	operator *= ( const Vec4 & rhs );
 	const Vec4 &	operator /= ( const Vec4 & rhs );
+	Vec4 operator/(const Vec4& rhs) const;
 	Vec4			operator - ( const Vec4 & rhs ) const;
 	Vec4			operator * ( const float rhs ) const;
 	float			operator [] ( const int idx ) const;
@@ -594,6 +608,11 @@ inline const Vec4 & Vec4::operator /= ( const Vec4 & rhs ) {
 	z /= rhs.z;
 	w /= rhs.w;
 	return *this;
+}
+
+inline Vec4 Vec4::operator/(const Vec4& rhs) const
+{
+	return Vec4(x / rhs.x, y / rhs.y, z / rhs.z, w / rhs.w);
 }
 
 inline Vec4 Vec4::operator - ( const Vec4 & rhs ) const {

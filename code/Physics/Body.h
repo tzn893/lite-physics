@@ -18,6 +18,9 @@ public:
 
 	Body();
 
+	void SetEnableCCD(bool enabled);
+	bool CCDEnabled();
+
 	void Initialize(Vec3 pos, Quat ori, float mass, Shape* shape, float elasity, float firction);
 
 	float GetMass() const;
@@ -31,6 +34,8 @@ public:
 	void  ApplyImpulse(Vec3 impulse, Vec3 position);
 	// 直接对物体施加力矩
 	void  ApplyTorch(Vec3 torch);
+
+	Bounds GetBounds();
 
 	Mat3 GetInertiaTensorLocalSpace() const;
 
@@ -85,4 +90,7 @@ private:
 
 	static constexpr float maxLinearVelocity = 1e3;
 	static constexpr float maxAngularVelocity = 30.0f;
+
+	// 是否检测CCD
+	bool m_enableCCD;
 };

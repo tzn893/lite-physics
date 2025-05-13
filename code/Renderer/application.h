@@ -110,6 +110,9 @@ protected:
 	void MouseScrolled( float z );
 	void Keyboard( int key, int scancode, int action, int modifiers );
 
+
+	virtual void Start() {}
+
 	static void OnWindowResized( GLFWwindow * window, int width, int height );
 	static void OnMouseMoved( GLFWwindow * window, double x, double y );
 	static void OnMouseWheelScrolled( GLFWwindow * window, double x, double y );

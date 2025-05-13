@@ -13,14 +13,14 @@ struct contact_t {
 
 	Vec3 normal;	// In World Space coordinates
 	float separationDistance = 1e-6f;	// positive when non-penetrating, negative when penetrating
-	float timeOfImpact;
+	float timeOfImpact = 0;
 
 	Body * bodyA = nullptr;
 	Body * bodyB = nullptr;
 
 	bool HasIntersection()
 	{
-		return separationDistance < 0.0f;
+		return separationDistance < 0.0f || timeOfImpact > 0;
 	}
 
 };

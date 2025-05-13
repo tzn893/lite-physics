@@ -18,6 +18,9 @@ public:
 
 	Vec2 GetExtent() const;
 
+	Vec3 GetNormalLocalSpace();
+	Vec3 GetNormalWorldSpace(Quat ori);
+
 public:
 	float m_width, m_height;
 };

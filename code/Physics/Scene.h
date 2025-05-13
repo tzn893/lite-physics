@@ -81,5 +81,6 @@ public:
 	SceneBuilder* m_builder;
 
 	Vec3 m_gravity = Vec3(0, 0, -10.0f);
+	std::vector<contact_t> m_contactBuffer;
 };
 

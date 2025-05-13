@@ -46,8 +46,8 @@ ShapeSphere::GetBounds
 */
 Bounds ShapeSphere::GetBounds( const Vec3 & pos, const Quat & orient ) const {
 	Bounds tmp;
-	
-	// TODO: Add code
+	tmp.maxs = Vec3( m_radius, m_radius, m_radius) + pos;
+	tmp.mins = Vec3(-m_radius,-m_radius,-m_radius) + pos;
 
 	return tmp;
 }
@@ -61,6 +61,8 @@ Bounds ShapeSphere::GetBounds() const {
 	Bounds tmp;
 	
 	// TODO: Add code
+	tmp.maxs = Vec3( m_radius, m_radius, m_radius);
+	tmp.mins = Vec3(-m_radius,-m_radius,-m_radius);
 
 	return tmp;
 }
