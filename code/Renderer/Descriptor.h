@@ -60,7 +60,7 @@ public:
 	bool Create( DeviceContext * device, const CreateParms_t & parms );
 	void Cleanup( DeviceContext * device );
 
-	static const int MAX_DESCRIPTOR_SETS = 256;
+	static const int MAX_DESCRIPTOR_SETS = 65536;
 
 	VkDescriptorPool m_vkDescriptorPool;
 	VkDescriptorSetLayout m_vkDescriptorSetLayout;

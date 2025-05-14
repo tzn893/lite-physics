@@ -212,6 +212,7 @@ public:
 	const Vec3 &	operator -= ( const Vec3 & rhs );
 	Vec3			operator - ( const Vec3 & rhs ) const;
 	Vec3			operator * ( const float rhs ) const;
+	Vec3			operator * (const Vec3& rhs) const;
     Vec3			operator / ( const float rhs ) const;
 	Vec3			operator / (const Vec3& rhs) const;
 	const Vec3 &	operator *= ( const float rhs );
@@ -453,6 +454,12 @@ inline void Vec3::GetOrtho( Vec3 & u, Vec3 & v ) const {
 	v.Normalize();
 	u = v.Cross( n );
 	u.Normalize();
+}
+
+
+inline Vec3 Vec3::operator * (const Vec3& rhs) const
+{
+	return Vec3(x * rhs.x, y * rhs.y, z * rhs.z);
 }
 
 /*

@@ -219,7 +219,7 @@ bool Application::InitializeVulkan() {
 	//
 	//	Uniform Buffer
 	//
-	m_uniformBuffer.Allocate( &m_deviceContext, NULL, sizeof( float ) * 16 * 4 * 128, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT );
+	m_uniformBuffer.Allocate( &m_deviceContext, NULL, sizeof( float ) * 16 * 4 * 65536, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT );
 
 	//
 	//	Offscreen rendering

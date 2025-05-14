@@ -44,7 +44,7 @@ if(LITE_PHYSICS_ENABLE_RENDERING)
     add_compile_definitions(LITE_PHYSICS_RENDERER_SHADER_DIR="${CMAKE_SOURCE_DIR}/data/shaders/spirv")
     
 
-    set(apps basic ccd)
+    set(apps basic ccd multi)
 
     foreach(app ${apps})
         message(STATUS "adding app ${app}...")

@@ -7,6 +7,7 @@
 #include "Physics/Broadphase.h"
 
 #include "Physics/Shapes/ShapeFactory.h"
+#include "Physics/Broadphase.h"
 #include <algorithm>
 
 
@@ -53,19 +54,24 @@ void Scene::Update(const float dt_sec) {
 		body->ApplyImpulse(gravityImpulse);
 	}
 
-	for (int i = 0; i < m_bodies.size(); i++)
+	// 碰撞检测 broadPhase
+	std::vector<collisionPair_t> pairs;
+	BroadPhase(m_bodies, pairs, dt_sec);
+
+	// 碰撞检测 narrowPhase
+	for (int i = 0;i < pairs.size();i++)
 	{
-		for (int j = i + 1; j < m_bodies.size(); j++)
+		Body* bodyI = m_bodies[pairs[i].a];
+		Body* bodyJ = m_bodies[pairs[i].b];
+
+		if ((bodyI->HasInfintyMass() && bodyJ->HasInfintyMass()))
+			continue;
+
+		contact_t contact;
+
+		if (Intersect(bodyI, bodyJ, dt_sec, contact))
 		{
-			if ((m_bodies[i]->HasInfintyMass() && m_bodies[j]->HasInfintyMass()))
-				continue;
-
-			contact_t contact;
-
-			if (Intersect(m_bodies[i], m_bodies[j], dt_sec, contact))
-			{
-				m_contactBuffer[frameContactCount++] = contact;// ResolveContact(contact);
-			}
+			m_contactBuffer[frameContactCount++] = contact;// ResolveContact(contact);
 		}
 	}
 
@@ -76,7 +82,6 @@ void Scene::Update(const float dt_sec) {
 			return a.timeOfImpact < b.timeOfImpact;
 		}
 	);
-
 
 	// 按时间顺序依次处理接触点
 	float accumlatedTime = 0.0;

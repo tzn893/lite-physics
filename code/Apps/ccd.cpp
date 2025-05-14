@@ -17,7 +17,7 @@ public:
 		);
 		builder->AddSphere(
 			Vec3(20, 0, 0.f), Quat(0, 0, 0, 1),
-			5.0f, 0.0f, 1.0f, 1.0f
+			5.0f, 0.2f, 1.0f, 1.0f
 		);
 
 		builder->AddPlane(

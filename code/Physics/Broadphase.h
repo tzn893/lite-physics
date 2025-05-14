@@ -18,4 +18,4 @@ struct collisionPair_t {
 	}
 };
 
-void BroadPhase( const Body * bodies, const int num, std::vector< collisionPair_t > & finalPairs, const float dt_sec );
+void BroadPhase( const std::vector<Body*>& bodies, std::vector< collisionPair_t > & finalPairs, const float dt_sec );
