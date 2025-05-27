@@ -78,12 +78,24 @@ float Sqrt(const T& x)
 
 
 template<typename T>
-T Sign(const T& x)
+int Sign(const T& x)
 {
 	return static_cast<float>(x >= 0 ? 1 : -1);
 }
 
 
-bool SphereRayIntersection(Vec3 sphereCenter, float radius, Vec3 rayOrigin, Vec3 rayDir, float& t0, float& t1);
+bool SphereRayIntersection(const Vec3& sphereCenter, float radius, const Vec3& rayOrigin, const Vec3& rayDir, float& t0, float& t1);
 
-bool AABBRayIntersection(Vec3 boundMin, Vec3 boundMax, Vec3 rayOrigin, Vec3 rayDir, float& t0, float& t1);
+bool AABBRayIntersection(const Vec3&  boundMin, const Vec3& boundMax, const Vec3& rayOrigin, const Vec3& rayDir, float& t0, float& t1);
+
+float DistanceFromLine(const Vec3& line0, const Vec3& line1, const Vec3& pt);
+
+// 点到平面的距离（有符号）
+float DistanceFromPlane(const Vec3& normal, const Vec3& planePt, const Vec3& pt);
+
+// 点到三角形所在平面的距离（有符号）
+float DistanceFromTriangle(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2, const Vec3& pt);
+
+Vec3 TriangleNormal(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2);
+
+

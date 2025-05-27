@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+#include <deque>
 
 #include "Math/Vector.h"
 #include "Math/Quat.h"
@@ -18,6 +19,8 @@
 #include "Renderer/model.h"
 #include "Renderer/shader.h"
 #include "Renderer/FrameBuffer.h"
+
+#include "Physics/Scene.h"
 
 
 #define DEFINE_APPLICATION_ENTRANCE(App) int main( int argc, char * argv[] ) {\
@@ -51,7 +54,6 @@ enum EInputKey
 	IK_J,
 	IK_K,
 	IK_L,
-	IK_U,
 	IK_I,
 	IK_O,
 	IK_COUNT
@@ -119,7 +121,7 @@ protected:
 	static void OnKeyboard( GLFWwindow * window, int key, int scancode, int action, int modifiers );
 
 protected:
-	class Scene * m_scene;
+	Scene * m_scene;
 
 	GLFWwindow * m_glfwWindow;
 
@@ -160,6 +162,13 @@ protected:
 	static const int WINDOW_HEIGHT = 720;
 
 	static const bool m_enableLayers = true;
+
+
+	int maxSceneStateCounter = 1;
+	int sceneStateCounter = 0;
+
+	int maxSceneStateCnt = 1000;
+	std::deque<SceneState> m_sceneStates;
 };
 
 extern Application * g_application;

@@ -30,6 +30,12 @@ public:
 	void AddPlane(Vec3 position, Quat orientation, float mass,
 		float elasity, float width, float height, float friction);
 
+	void AddBox(Vec3 position ,Quat orientation, float mass,
+		float elasity, Vec3 extent, float friction);
+
+	void AddConvex(Vec3 position, Quat orientation, float mass,
+		float elasity, const Vec3* pts, int numPt, float friction);
+
 	void Reset();
 
 	void Clear();
@@ -54,6 +60,16 @@ private:
 		{
 			float width, height;
 		} plane;
+
+		struct CommandBoxData
+		{
+			Vec3 extent;
+		} box;
+
+		struct CommandConvex
+		{
+			std::vector<Vec3> pts;
+		} convex;
 	};
 
 	void ExecuteCommand(const Command& command);
@@ -61,6 +77,12 @@ private:
 	std::vector<Command>  m_commands;
 	std::vector<Body*>*   m_bodies;
 	ShapeFactory	 	  m_shapeFactory;
+};
+
+struct SceneState
+{
+	std::vector<Body*>	   bodies;
+	std::vector<BodyState> bodyStates;
 };
 
 
@@ -72,10 +94,17 @@ public:
 
 	void Reset();
 	SceneBuilder* BuildScene();
-	void Update( const float dt_sec );	
+	void Update( const float dt_sec );
+
+	SceneState GetCurrentState();
+	void RestoreState(const SceneState& state);
 
 	std::vector< Body* > m_bodies;
 	std::vector< Constraint * >	m_constraints;
+
+	int maxStepCnt = 0;
+	std::vector<SceneState>	m_sceneStates;
+
 	ManifoldCollector m_manifolds;
 
 	SceneBuilder* m_builder;

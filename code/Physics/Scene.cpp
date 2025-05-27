@@ -7,7 +7,6 @@
 #include "Physics/Broadphase.h"
 
 #include "Physics/Shapes/ShapeFactory.h"
-#include "Physics/Broadphase.h"
 #include <algorithm>
 
 
@@ -48,11 +47,16 @@ void Scene::Update(const float dt_sec) {
 	// 计算冲量
 	for (auto& body : m_bodies)
 	{
+		if (!body->GravityEnabled())
+		{
+			continue;
+		}
 		float mass = body->GetMass();
 
 		Vec3 gravityImpulse = m_gravity * mass * dt_sec;
 		body->ApplyImpulse(gravityImpulse);
 	}
+
 
 	// 碰撞检测 broadPhase
 	std::vector<collisionPair_t> pairs;
@@ -82,6 +86,7 @@ void Scene::Update(const float dt_sec) {
 			return a.timeOfImpact < b.timeOfImpact;
 		}
 	);
+
 
 	// 按时间顺序依次处理接触点
 	float accumlatedTime = 0.0;
@@ -115,6 +120,29 @@ void Scene::Update(const float dt_sec) {
 		body->UpdatePosition(remainingTime);
 	}
 }
+
+SceneState Scene::GetCurrentState()
+{
+	SceneState state;
+	for (auto& body : m_bodies)
+	{
+		state.bodies.push_back(body);
+		state.bodyStates.push_back(body->GetCurrentState());
+	}
+
+	return state;
+}
+
+void Scene::RestoreState(const SceneState& state)
+{
+	for (int idx = 0; idx < state.bodyStates.size(); idx++)
+	{
+		assert(state.bodies[idx] == m_bodies[idx]);
+		m_bodies[idx]->RestoreState(state.bodyStates[idx]);
+	}
+}
+
+
 
 SceneBuilder::SceneBuilder(Scene* scene)
 {
@@ -154,6 +182,43 @@ void SceneBuilder::AddPlane(Vec3 position, Quat orientation, float mass, float e
 	ExecuteCommand(command);
 
 }
+
+
+
+void SceneBuilder::AddBox(Vec3 position, Quat orientation, float mass,
+	float elasity, Vec3 extent, float friction)
+{
+	Command command;
+	command.position = position;
+	command.orientation = orientation;
+	command.elasity = elasity;
+	command.mass = mass;
+	command.friction = friction;
+	command.type = EShape::SHAPE_BOX;
+
+	command.box.extent = extent;
+
+	m_commands.push_back(command);
+
+	ExecuteCommand(command);
+}
+
+void SceneBuilder::AddConvex(Vec3 position, Quat orientation, float mass,
+	float elasity, const Vec3* pts, int numPt, float friction)
+{
+	Command command;
+	command.position = position;
+	command.orientation = orientation;
+	command.elasity = elasity;
+	command.mass = mass;
+	command.friction = friction;
+	command.type = EShape::SHAPE_CONVEX;
+
+	command.convex.pts = std::vector<Vec3>(pts, pts + numPt);
+
+	m_commands.push_back(command);
+}
+
 
 void SceneBuilder::Reset()
 {
@@ -200,6 +265,31 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 			command.mass,
 			m_shapeFactory.CreateShape(
 				ShapeFactoryDescHelper::MakePlane(command.plane.width, command.plane.height)
+			),
+			command.elasity,
+			command.friction
+		);
+		break;
+	case EShape::SHAPE_BOX:
+		body->Initialize(
+			command.position,
+			command.orientation,
+			command.mass,
+			m_shapeFactory.CreateShape(
+				ShapeFactoryDescHelper::MakeBox(command.box.extent.x,
+					command.box.extent.y, command.box.extent.z)
+			),
+			command.elasity,
+			command.friction
+		);
+		break;
+	case EShape::SHAPE_CONVEX:
+		body->Initialize(
+			command.position,
+			command.orientation,
+			command.mass,
+			m_shapeFactory.CreateShape(
+				ShapeFactoryDescHelper::MakeConvex(command.convex.pts )
 			),
 			command.elasity,
 			command.friction

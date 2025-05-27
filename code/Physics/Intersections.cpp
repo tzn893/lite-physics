@@ -16,6 +16,8 @@ void PlanePlaneIntersect(Body* planeA, Body* planeB, contact_t& contact)
 	assert(false);
 }
 
+
+
 void SpherePlaneIntersect(Body* sphereA, Body* planeB, contact_t& contact)
 {
 	assert(sphereA->GetShape()->GetType() == Shape::SHAPE_SPHERE &&
@@ -110,6 +112,22 @@ void SphereSphereIntersect(Body* sphereA, Body* sphereB, contact_t& contact)
 	contact.timeOfImpact = 0;
 }
 
+// 对于任意形状，使用GJK算法做碰撞检测
+void GeneralIntersect(Body* bodyA, Body* bodyB, contact_t& contact)
+{
+	bool hasIntersection = GJK_DoesIntersect(bodyA, bodyB, 1e-4f, contact.ptOnA_WorldSpace, contact.ptOnB_WorldSpace);
+	contact.bodyA = bodyA;
+	contact.bodyB = bodyB;
+	contact.normal = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dir();
+	contact.ptOnA_LocalSpace = bodyA->WorldSpacePointToLocalSpace(contact.ptOnA_WorldSpace);
+	contact.ptOnB_LocalSpace = bodyB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
+
+	contact.separationDistance = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).GetMagnitude() * 
+		(hasIntersection ? -1 : 1);
+
+	contact.timeOfImpact = 0;
+}
+
 using IntersectionFunc = std::function<void(Body* bodyA, Body* bodyB, contact_t& contact)>;
 
 
@@ -142,7 +160,7 @@ IntersectionFunc FindIntersectionFunction(Body* bodyA, Body* bodyB)
 		}
 	}
 
-	return nullptr;
+	return GeneralIntersect;
 }
 
 using CCDSolver = std::function<void(Body* bodyA, Body* bodyB, contact_t& contact, float dt)>;
@@ -166,7 +184,8 @@ float GetThickness(Body* bodyA, Vec3 dir)
 
 void GeneralCCDSolver(Body* bodyA, Body* bodyB, contact_t& contact, IntersectionFunc intersectionFunc, float dt)
 {
-	 // TODO 
+	 // TODO 目前还未实现通用的CCD
+	assert(false);
 }
 
 
@@ -248,6 +267,9 @@ void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, contact_t& contact, flo
 	SphereSphereIntersect(sphereA, sphereB, contact);
 }
 
+
+
+
 CCDSolverTableItem g_CCDSolverFunctionTable[] =
 {
 	{EShape::SHAPE_SPHERE, EShape::SHAPE_SPHERE, SphereSphereCCDSolver},
@@ -328,25 +350,3 @@ bool Intersect( Body * bodyA, Body * bodyB, const float dt, contact_t & contact)
 
 	return contact.HasIntersection();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -158,7 +158,8 @@ std::vector< const char * > Application::GetGLFWRequiredExtensions() const {
 Application::InitializeVulkan
 ====================================================
 */
-bool Application::InitializeVulkan() {
+bool Application::InitializeVulkan() 
+{
 	//
 	//	Vulkan Instance
 	//
@@ -281,7 +282,8 @@ bool Application::InitializeVulkan() {
 Application::Cleanup
 ====================================================
 */
-void Application::Cleanup() {
+void Application::Cleanup() 
+{
 	CleanupOffscreen( &m_deviceContext );
 
 	m_copyShader.Cleanup( &m_deviceContext );
@@ -333,7 +335,8 @@ void Application::OnWindowResized( GLFWwindow * window, int windowWidth, int win
 Application::ResizeWindow
 ====================================================
 */
-void Application::ResizeWindow( int windowWidth, int windowHeight ) {
+void Application::ResizeWindow( int windowWidth, int windowHeight ) 
+{
 	m_deviceContext.ResizeWindow( windowWidth, windowHeight );
 
 	//
@@ -367,7 +370,8 @@ void Application::ResizeWindow( int windowWidth, int windowHeight ) {
 Application::OnMouseMoved
 ====================================================
 */
-void Application::OnMouseMoved( GLFWwindow * window, double x, double y ) {
+void Application::OnMouseMoved( GLFWwindow * window, double x, double y ) 
+{
 	Application * application = reinterpret_cast< Application * >( glfwGetWindowUserPointer( window ) );
 	application->MouseMoved( (float)x, (float)y );
 }
@@ -386,10 +390,12 @@ void Application::MouseMoved( float x, float y ) {
 	m_cameraPositionTheta += ds.y * sensitivity;
 	m_cameraPositionPhi += ds.x * sensitivity;
 
-	if ( m_cameraPositionTheta < 0.14f ) {
+	if ( m_cameraPositionTheta < 0.14f ) 
+	{
 		m_cameraPositionTheta = 0.14f;
 	}
-	if ( m_cameraPositionTheta > 3.0f ) {
+	if ( m_cameraPositionTheta > 3.0f ) 
+	{
 		m_cameraPositionTheta = 3.0f;
 	}
 }
@@ -431,18 +437,32 @@ void Application::OnKeyboard( GLFWwindow * window, int key, int scancode, int ac
 Application::Keyboard
 ====================================================
 */
-void Application::Keyboard( int key, int scancode, int action, int modifiers ) {
-	if ( GLFW_KEY_R == key && GLFW_RELEASE == action ) {
+void Application::Keyboard( int key, int scancode, int action, int modifiers ) 
+{
+	if ( GLFW_KEY_R == key && GLFW_RELEASE == action ) 
+	{
 		m_scene->Reset();
+
+		m_sceneStates.clear();
+		sceneStateCounter = 0;
 		Start();
 	}
-	if ( GLFW_KEY_T == key && GLFW_RELEASE == action ) {
+	if ( GLFW_KEY_T == key && GLFW_RELEASE == action ) 
+	{
 		m_isPaused = !m_isPaused;
 	}
-	if ( GLFW_KEY_Y == key && ( GLFW_PRESS == action || GLFW_REPEAT == action ) ) {
+	if ( GLFW_KEY_Y == key && ( GLFW_PRESS == action || GLFW_REPEAT == action ) ) 
+	{
 		m_stepFrame = m_isPaused && !m_stepFrame;
 	}
-
+	if (GLFW_KEY_U == key && (GLFW_PRESS == action || GLFW_REPEAT == action))
+	{
+		if (!m_sceneStates.empty())
+		{
+			m_scene->RestoreState(*m_sceneStates.rbegin());
+			m_sceneStates.pop_back();
+		}
+	}
 
 	if (GLFW_KEY_A == key )
 	{
@@ -576,17 +596,6 @@ void Application::Keyboard( int key, int scancode, int action, int modifiers ) {
 			m_inputBuffer.KeyPress(IK_L);
 		}
 	}
-	else if (GLFW_KEY_U == key)
-	{
-		if (GLFW_RELEASE == action)
-		{
-			m_inputBuffer.KeyRelease(IK_U);
-		}
-		else if (GLFW_PRESS == action)
-		{
-			m_inputBuffer.KeyPress(IK_U);
-		}
-		}
 	else if (GLFW_KEY_I == key)
 	{
 		if (GLFW_RELEASE == action)
@@ -659,15 +668,34 @@ void Application::MainLoop() {
 		}
 		float dt_sec = dt_us * 0.001f * 0.001f;
 
+		
+
+		
+
 		// 用户自定义逻辑
-		UpdateScene(dt_sec);
 
 		// Run Update
-		if ( runPhysics ) {
+		if ( runPhysics ) 
+		{
+			UpdateScene(dt_sec);
+
+			sceneStateCounter--;
+			if (sceneStateCounter <= 0)
+			{
+				sceneStateCounter = maxSceneStateCounter;
+				if (maxSceneStateCnt <= m_sceneStates.size())
+				{
+					m_sceneStates.pop_front();
+				}
+				m_sceneStates.push_back(m_scene->GetCurrentState());
+			}
+
 			int startTime = GetTimeMicroseconds();
-			for ( int i = 0; i < 2; i++ ) {
+			for ( int i = 0; i < 2; i++ ) 
+			{
 				m_scene->Update( dt_sec);
 			}
+
 			int endTime = GetTimeMicroseconds();
 
 			dt_us = (float)endTime - (float)startTime;

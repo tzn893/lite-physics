@@ -13,6 +13,15 @@
 Body
 ====================================================
 */
+
+struct BodyState
+{
+	Vec3		m_position;
+	Quat		m_orientation;
+	Vec3		m_linearVelocity;
+	Vec3		m_angularVelocity;
+};
+
 class Body {
 public:
 
@@ -54,6 +63,9 @@ public:
 
 	Vec3 GetBodyPositionWorldSpace();
 
+	// 获取世界空间下body的Support
+	Vec3 GetSupportWorldSpace(Vec3 Dir, float bias) const;
+
 	void UpdatePosition(float dt);
 
 	float GetElasity() const;
@@ -70,6 +82,12 @@ public:
 
 	// 在solve contact的过程中对Body位置修正，不要用到别的函数里！
 	void FixPosition(Vec3 offset);
+
+	BodyState GetCurrentState();
+	void	  RestoreState(const BodyState& state);
+
+	void SetEnableGravity(bool enableGravity);
+	bool GravityEnabled();
 
 	~Body();
 
@@ -93,4 +111,6 @@ private:
 
 	// 是否检测CCD
 	bool m_enableCCD;
+
+	bool m_enableGravity;
 };

@@ -27,7 +27,14 @@ public:
 
 	shapeType_t GetType() const override { return SHAPE_BOX; }
 
+	virtual std::optional<PointArrayAccessor> GetPointData() override;
+
+	float GetLength() const;
+	float GetWidth() const;
+	float GetHeight() const;
+
 public:
-	std::vector< Vec3 > m_points;
+	
+	Vec3   m_pts[8];
 	Bounds m_bounds;
 };

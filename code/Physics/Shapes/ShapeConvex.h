@@ -42,10 +42,14 @@ public:
 
 	float FastestLinearSpeed( const Vec3 & angularVelocity, const Vec3 & dir ) const override;
 
+	virtual std::optional<PointArrayAccessor> GetPointData() override;
+
 	shapeType_t GetType() const override { return SHAPE_CONVEX; }
 
 public:
 	std::vector< Vec3 > m_points;
 	Bounds m_bounds;
 	Mat3 m_inertiaTensor;
+
+	Vec3   m_coners[8];
 };

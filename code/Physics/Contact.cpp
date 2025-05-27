@@ -39,11 +39,11 @@ void ResolveContact( contact_t & contact )
 
 	float e = bodyA->GetElasity() * bodyB->GetElasity();
 
-	Vec3 JA = velNormal * (1 + e)  / (bodyA->GetInvMass() + bodyB->GetInvMass() - angularFactor);
+	Vec3 JA = velNormal * (1 + e)  / (bodyA->GetInvMass() + bodyB->GetInvMass() + angularFactor);
 	Vec3 JB = JA * -1;
 
-	bodyA->ApplyImpulse(JA);
-	bodyB->ApplyImpulse(JB);
+	bodyA->ApplyImpulse(JA, contact.ptOnA_WorldSpace);
+	bodyB->ApplyImpulse(JB, contact.ptOnB_WorldSpace);
 
 	// Ä¦²ÁÁ¦
 	Vec3 tangent = velTangent.Dir();

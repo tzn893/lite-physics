@@ -3,9 +3,7 @@
 
 class ShapePlane : public Shape {
 public:
-	explicit ShapePlane(float width, float height) : m_width(width), m_height(height) {
-		m_centerOfMass.Zero();
-	}
+	explicit ShapePlane(float width, float height);
 
 	Vec3 Support(const Vec3& dir, const Vec3& pos, const Quat& orient, const float bias) const override;
 
@@ -23,4 +21,7 @@ public:
 
 public:
 	float m_width, m_height;
+
+	// plane的support函数类似一个很薄的box
+	Vec3 m_points[8];
 };

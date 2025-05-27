@@ -21,6 +21,7 @@ public:
 	Quat &	operator *= ( const float & rhs );
 	Quat &	operator *= ( const Quat & rhs );
 	Quat	operator * ( const Quat & rhs ) const;
+	Quat	operator +(const Quat& rhs) const;
 
 	void	Normalize();
 	void	Invert();
@@ -61,6 +62,11 @@ x( X ),
 y( Y ),
 z( Z ),
 w( W ) {
+}
+
+inline Quat  Quat::operator+(const Quat& rhs) const
+{
+	return Quat(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
 }
 
 inline Quat::Quat( Vec3 n, const float angleRadians ) {

@@ -183,6 +183,11 @@ Vec3 Body::GetBodyPositionWorldSpace()
     return m_position;
 }
 
+Vec3 Body::GetSupportWorldSpace(Vec3 Dir, float bias) const
+{
+    return m_shape->Support(Dir, m_position, m_orientation, bias);
+}
+
 void Body::UpdatePosition(float dt)
 {
     if (HasInfintyMass())
@@ -199,19 +204,27 @@ void Body::UpdatePosition(float dt)
 	Vec3 accelAngular = GetInverseInertiaTensorWorldSpace() * 
         m_angularVelocity.Cross( GetInertialTensorWorldSpace() * m_angularVelocity);
 
+    /*
     Vec3 dangle = m_angularVelocity * dt;
     Quat dquat = Quat(dangle, dangle.GetMagnitude());
+    */
+    Vec3 domega = m_angularVelocity * dt * 0.5f;
+    Quat dquat = Quat(domega.x, domega.y, domega.z, 0);
 
     // 更新角度
-    m_orientation = dquat * m_orientation;
+    m_orientation = m_orientation + dquat * m_orientation;
     m_orientation.Normalize();
     
     m_angularVelocity += accelAngular * dt;
 
+    m_angularVelocity *= 0.998f;
+
 	// 绕着质心旋转的中心点
+    /*
     Vec3 posCM = GetCenterOfMassWorldSpace();
     Vec3 relativePosition = m_position - posCM;
     m_position = posCM + dquat.RotatePoint(relativePosition);
+    */
 
 }
 
@@ -248,6 +261,29 @@ Quat Body::GetOrientation() const
 void Body::FixPosition(Vec3 position)
 {
     m_position += position;
+}
+
+BodyState Body::GetCurrentState()
+{
+    return BodyState{m_position, m_orientation, m_linearVelocity, m_angularVelocity };
+}
+
+void Body::RestoreState(const BodyState& state)
+{
+    m_position = state.m_position;
+    m_orientation = state.m_orientation;
+    m_angularVelocity = state.m_angularVelocity;
+    m_linearVelocity = state.m_linearVelocity;
+}
+
+void Body::SetEnableGravity(bool enableGravity)
+{
+    m_enableGravity = enableGravity;
+}
+
+bool Body::GravityEnabled()
+{
+    return m_enableGravity;
 }
 
 Body::~Body()

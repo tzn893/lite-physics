@@ -13,7 +13,7 @@ public:
 
 		builder->AddSphere(
 			Vec3(0, 0, 0.f), Quat(0, 0, 0, 1),
-			1.0f, 1.0f, 1.0f, 1.0f
+			100.0f, 1.0f, 1.0f, 1.0f
 		);
 
 		float radius = 0.5;
@@ -33,7 +33,7 @@ public:
 
 				builder->AddSphere(
 					pos, Quat(0, 0, 0, 1),
-					0.01f, 1.0f, radius, 1.0f
+					1.0f, 0.9f, radius, 1.0f
 				);
 			}
 		}
@@ -50,7 +50,38 @@ public:
 		if (firstFrame)
 		{
 			firstFrame = false;
-			m_scene->m_bodies[0]->ApplyImpulse(Vec3(150, 0, 0));
+			m_scene->m_bodies[0]->ApplyImpulse(Vec3(900, 0, 0));
+		}
+
+		if (m_inputBuffer.GetKeyHold(IK_A))
+		{
+			Body* a = m_scene->m_bodies[0];
+			Vec3 position = a->GetCenterOfMassWorldSpace();
+
+			position += Vec3(0, 0, 0.5);
+			Vec3 torch = Vec3(-100, 0, 0) * dt_sec;
+			a->ApplyTorch(torch);
+		}
+		if (m_inputBuffer.GetKeyHold(IK_D))
+		{
+			Body* a = m_scene->m_bodies[0];
+			Vec3 position = a->GetCenterOfMassWorldSpace();
+			Vec3 torch = Vec3(100, 0, 0) * dt_sec;
+			a->ApplyTorch(torch);
+		}
+		if (m_inputBuffer.GetKeyHold(IK_W))
+		{
+			Body* a = m_scene->m_bodies[0];
+			Vec3 position = a->GetCenterOfMassWorldSpace();
+			Vec3 torch = Vec3(0, 100, 0) * dt_sec;
+			a->ApplyTorch(torch);
+		}
+		if (m_inputBuffer.GetKeyHold(IK_S))
+		{
+			Body* a = m_scene->m_bodies[0];
+			Vec3 position = a->GetCenterOfMassWorldSpace();
+			Vec3 torch = Vec3(0, -100, 0) * dt_sec;
+			a->ApplyTorch(torch);
 		}
 	}
 

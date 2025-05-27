@@ -1,6 +1,6 @@
 #include "Helpers.h"
 
-bool SphereRayIntersection(Vec3 sphereCenter, float radius, Vec3 rayOrigin, Vec3 rayDir, float& t0, float& t1)
+bool SphereRayIntersection(const Vec3& sphereCenter, float radius, const Vec3& rayOrigin, const Vec3& rayDir, float& t0, float& t1)
 {
 	Vec3 m = sphereCenter - rayOrigin;
 
@@ -21,7 +21,7 @@ bool SphereRayIntersection(Vec3 sphereCenter, float radius, Vec3 rayOrigin, Vec3
 	return t1 >= 0;
 }
 
-bool AABBRayIntersection(Vec3 boundMin, Vec3 boundMax, Vec3 rayOrigin, Vec3 rayDir, float& t0, float& t1)
+bool AABBRayIntersection(const Vec3& boundMin, const Vec3& boundMax, const Vec3& rayOrigin, const Vec3& rayDir, float& t0, float& t1)
 {
 	Vec3 tMin = (boundMin - rayOrigin) / rayDir;
 	Vec3 tMax = (boundMax - rayOrigin) / rayDir;
@@ -32,4 +32,36 @@ bool AABBRayIntersection(Vec3 boundMin, Vec3 boundMax, Vec3 rayOrigin, Vec3 rayD
 	t1 = Min(Min(b2.x, b2.y), b2.z);
 
 	return t0 <= t1;
-};
+}
+
+float DistanceFromLine(const Vec3& a, const Vec3& b, const Vec3& pt)
+{
+	Vec3 ab = b - a;
+	ab.Normalize();
+
+	Vec3 ray = pt - a;
+	Vec3 projection = ab * ray.Dot(ab);
+	Vec3 perpindicular = ray - projection;
+
+	return perpindicular.GetMagnitude();
+}
+
+float DistanceFromPlane(const Vec3& normal, const Vec3& planePt, const Vec3& pt)
+{
+	Vec3 ray = pt - planePt;
+	return ray.Dot(normal);
+}
+
+float DistanceFromTriangle(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2, const Vec3& pt)
+{
+	Vec3 planeNormal = TriangleNormal(pt0, pt1, pt2);
+
+	return DistanceFromPlane(planeNormal, pt0, pt);
+}
+
+Vec3 TriangleNormal(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2)
+{
+	return ((pt1 - pt0).Cross(pt2 - pt0)).Dir();
+}
+
+

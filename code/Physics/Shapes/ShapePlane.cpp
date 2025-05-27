@@ -1,9 +1,42 @@
 #include "ShapePlane.h"
 #include "Math/Helpers.h"
 
+ShapePlane::ShapePlane(float width, float height): m_width(width), m_height(height)
+{
+    // plane就是厚度很薄的box
+    float thick = 5e-4f;
+
+    m_centerOfMass = Vec3(0, 0, 0);
+    
+    m_points[0] = Vec3(width * 0.5f, height * 0.5f, thick * 0.5f);
+    m_points[1] = Vec3(width *-0.5f, height * 0.5f, thick * 0.5f);
+    m_points[2] = Vec3(width * 0.5f, height *-0.5f, thick * 0.5f);
+    m_points[3] = Vec3(width *-0.5f, height *-0.5f, thick * 0.5f);
+    m_points[4] = Vec3(width * 0.5f, height * 0.5f, thick *-0.5f);
+    m_points[5] = Vec3(width *-0.5f, height * 0.5f, thick *-0.5f);
+    m_points[6] = Vec3(width * 0.5f, height *-0.5f, thick *-0.5f);
+    m_points[7] = Vec3(width *-0.5f, height *-0.5f, thick *-0.5f);
+}
+
 Vec3 ShapePlane::Support(const Vec3& dir, const Vec3& pos, const Quat& orient, const float bias) const
 {
-    return Vec3();
+    Vec3 supportPt;
+
+    // 找到距离最远的顶点
+    Vec3 maxPt = orient.RotatePoint(m_points[0]);
+    float maxDist = dir.Dot(maxPt);
+    for (int i = 1; i < 8; i++)
+    {
+        Vec3 pt = orient.RotatePoint(m_points[i]);
+        float dist = dir.Dot(pt);
+        if (dist > maxDist)
+        {
+            maxDist = dist;
+            maxPt = pt;
+        }
+    }
+
+    return maxPt + maxPt.Dir() * bias + pos;
 }
 
 Mat3 ShapePlane::InertiaTensor() const
@@ -19,22 +52,15 @@ Mat3 ShapePlane::InertiaTensor() const
 
 Bounds ShapePlane::GetBounds(const Vec3& pos, const Quat& orient) const
 {
-    Vec3 pt0 = Vec3( m_width, m_height, 0);
-    Vec3 pt1 = Vec3(-m_width, m_height, 0);
-    Vec3 pt2 = Vec3( m_width,-m_height, 0);
-    Vec3 pt3 = Vec3(-m_width,-m_height, 0);
+    Bounds bounds;
 
+    for (int i = 0; i < 8; i++)
+    {
+        Vec3 pt = pos + orient.RotatePoint(m_points[i]);
+        bounds.Expand(pt);
+    }
 
-    pt0 = orient.RotatePoint(pt0) + pos;
-    pt1 = orient.RotatePoint(pt1) + pos;
-    pt2 = orient.RotatePoint(pt2) + pos;
-    pt3 = orient.RotatePoint(pt3) + pos;
-
-	Bounds tmp;
-    tmp.maxs = Max(pt0, Max(pt1, Max(pt2, pt3)));
-    tmp.mins = Min(pt0, Min(pt1, Min(pt2, pt3)));
-
-    return tmp;
+    return bounds;
 }
 
 Bounds ShapePlane::GetBounds() const
