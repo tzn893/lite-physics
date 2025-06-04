@@ -33,6 +33,10 @@ public:
 	float GetWidth() const;
 	float GetHeight() const;
 
+	// 获取物体所有用于SAT测试的轴在局部空间下的向量，返回物体对应分离轴的数量
+	// 对于不可使用SAT测试的物体返回-1
+	virtual int GetSeperateAxis(std::vector<Vec3>& outAxis);
+
 public:
 	
 	Vec3   m_pts[8];

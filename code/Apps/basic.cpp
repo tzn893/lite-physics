@@ -17,7 +17,7 @@ public:
 		);
 		builder->AddSphere(
 			Vec3(0, 0, -101), Quat(0, 0, 0, 1),
-			Body::InfinityMass, 0.8f, 100.0f, 1.0f
+			Body::InfinityMass, 0.2f, 100.0f, 1.0f
 		);
 
 	}
@@ -26,7 +26,7 @@ public:
 	{
 		if (m_inputBuffer.GetKeyHold(IK_A))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 
 			position += Vec3(0, 0, 0.5);
@@ -38,7 +38,7 @@ public:
 		}
 		if (m_inputBuffer.GetKeyHold(IK_D))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			// position += Vec3(0, 0, 0.5);
 			// Vec3 impulse = Vec3(0, -10, 0) * dt_sec;
@@ -47,7 +47,7 @@ public:
 		}
 		if (m_inputBuffer.GetKeyHold(IK_W))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			// position += Vec3(0, 0, 0.5);
 			//Vec3 impulse = Vec3(10, 0, 0) * dt_sec;
@@ -56,7 +56,7 @@ public:
 		}
 		if (m_inputBuffer.GetKeyHold(IK_S))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			// position += Vec3(0, 0, 0.5);
 			// Vec3 impulse = Vec3(-10, 0, 0) * dt_sec;

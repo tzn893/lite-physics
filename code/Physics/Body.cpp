@@ -14,6 +14,7 @@ m_position( 0.0f ),
 m_orientation( 0.0f, 0.0f, 0.0f, 1.0f ),
 m_shape( NULL ){
     m_enableCCD = false;
+    m_enableGravity = true;
 }
 
 void Body::SetEnableCCD(bool enabled)
@@ -57,6 +58,23 @@ float Body::GetMass() const
 float Body::GetInvMass() const
 {
     return m_invMass;
+}
+
+bool Body::CollectSeperateAxis(std::vector<Vec3>& outAxis)
+{
+    int axisCnt = m_shape->GetSeperateAxis(outAxis);
+    
+    if (axisCnt <= 0)
+    {
+        return false;
+    }
+
+    for (int i = outAxis.size() - axisCnt;i < outAxis.size(); i++)
+    {
+        outAxis[i] = m_orientation.RotatePoint(outAxis[i]).Dir();
+    }
+
+    return true;
 }
 
 bool Body::HasInfintyMass()
@@ -193,6 +211,15 @@ void Body::UpdatePosition(float dt)
     if (HasInfintyMass())
     {
         return;
+    }
+
+    if (m_linearVelocity.GetLengthSqr() < 1e-6f)
+    {
+        m_linearVelocity = Vec3(0, 0, 0);
+    }
+    if (m_angularVelocity.GetLengthSqr() < 1e-6f)
+    {
+        m_angularVelocity = Vec3(0, 0, 0);
     }
 
     m_position = m_linearVelocity * dt + m_position;

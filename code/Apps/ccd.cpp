@@ -17,7 +17,7 @@ public:
 		);
 		builder->AddSphere(
 			Vec3(20, 0, 0.f), Quat(0, 0, 0, 1),
-			5.0f, 0.2f, 1.0f, 1.0f
+			1.0f, 1.0f, 1.0f, 1.0f
 		);
 
 		builder->AddPlane(
@@ -33,12 +33,12 @@ public:
 		if (firstFrame)
 		{
 			firstFrame = false;
-			m_scene->m_bodies[0]->ApplyImpulse(Vec3(1000, 0, 0));
+			m_scene->GetBodies()[0]->ApplyImpulse(Vec3(1000, 0, 0));
 		}
 
 		if (m_inputBuffer.GetKeyHold(IK_A))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 
 			position += Vec3(0, 0, 0.5);
@@ -47,21 +47,21 @@ public:
 		}
 		if (m_inputBuffer.GetKeyHold(IK_D))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			Vec3 torch = Vec3(10, 0, 0) * dt_sec;
 			a->ApplyTorch(torch);
 		}
 		if (m_inputBuffer.GetKeyHold(IK_W))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			Vec3 torch = Vec3(0, 10, 0) * dt_sec;
 			a->ApplyTorch(torch);
 		}
 		if (m_inputBuffer.GetKeyHold(IK_S))
 		{
-			Body* a = m_scene->m_bodies[0];
+			Body* a = m_scene->GetBodies()[0];
 			Vec3 position = a->GetCenterOfMassWorldSpace();
 			Vec3 torch = Vec3(0, -10, 0) * dt_sec;
 			a->ApplyTorch(torch);
@@ -72,7 +72,7 @@ public:
 	{
 		firstFrame = true;
 		// 取消掉这段注释以开启CCD
-		m_scene->m_bodies[0]->SetEnableCCD(true);
+		m_scene->GetBodies()[0]->SetEnableCCD(true);
 	}
 
 	bool firstFrame = false;

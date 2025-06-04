@@ -810,3 +810,50 @@ inline void VecN::Zero() {
 		data[ i ] = 0.0f;
 	}
 }
+
+template<class VectorType>
+struct VectorAttribute
+{
+	static int Size(const VectorType& vec)
+	{
+		return sizeof(VectorType) / sizeof(float);
+	}
+};
+
+template<>
+struct VectorAttribute<VecN>
+{
+	static int Size(const VecN& vec)
+	{
+		return vec.N;
+	}
+};
+
+/*
+template<class ...Args>
+inline void FillVectorNOffset(int offset, VecN& target, Args... args)
+{
+	if constexpr (std::is_same_v<Args, int> || std::is_same_v<Args, float>
+		|| std::is_same_v<Args, double>)
+	{
+		target[offset] = args;
+		FillVectorNOffset(offset + 1, target, ...);
+	}
+	else
+	{
+		int size = VectorAttribute::Size(args);
+		for (int i = 0; i < size; i++)
+		{
+			target[offset + i] = args[i];
+		}
+		FillVectorNOffset(offset + size, target, ...);
+	}
+}
+
+template<class ...Args>
+inline void FillVectorN(VecN& target, Args... args)
+{
+	FillVectorNOffset(0, target, args...);
+}
+*/
+

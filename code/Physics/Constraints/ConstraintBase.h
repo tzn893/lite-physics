@@ -24,6 +24,8 @@ public:
 	static Mat4 Left( const Quat & q );
 	static Mat4 Right( const Quat & q );
 
+	void SetBodies(Body* bodyA, Vec3 anchorA, Vec3 axisA, Body* bodyB, Vec3 anchorB, Vec3 axisB);
+
 protected:
 	MatMN GetInverseMassMatrix() const;
 	VecN GetVelocities() const;
@@ -33,70 +35,12 @@ public:
 	Body * m_bodyA;
 	Body * m_bodyB;
 
-	Vec3 m_anchorA;		// The anchor location in bodyA's space
-	Vec3 m_axisA;		// The axis direction in bodyA's space
+	Vec3 m_anchorA;		// The anchor location in world space
+	Vec3 m_axisA;		// The axis direction in world space
 
-	Vec3 m_anchorB;		// The anchor location in bodyB's space
-	Vec3 m_axisB;		// The axis direction in bodyB's space
+	Vec3 m_anchorB;		// The anchor location in world space
+	Vec3 m_axisB;		// The axis direction in world space
 };
 
-/*
-====================================================
-Constraint::GetInverseMassMatrix
-====================================================
-*/
-inline MatMN Constraint::GetInverseMassMatrix() const {
-	MatMN invMassMatrix( 12, 12 );
-	
-	// TODO: Add code
 
-	return invMassMatrix;
-}
 
-/*
-====================================================
-Constraint::GetVelocities
-====================================================
-*/
-inline VecN Constraint::GetVelocities() const {
-	VecN q_dt( 12 );
-
-	// TODO: Add code
-
-	return q_dt;
-}
-
-/*
-====================================================
-Constraint::ApplyImpulses
-====================================================
-*/
-inline void Constraint::ApplyImpulses( const VecN & impulses ) {
-	// TODO: Add code
-}
-
-/*
-====================================================
-Constraint::Left
-====================================================
-*/
-inline Mat4 Constraint::Left( const Quat & q ) {
-	Mat4 L;
-	
-	// TODO: Add code
-
-	return L.Transpose();
-}
-
-/*
-====================================================
-Constraint::Right
-====================================================
-*/
-inline Mat4 Constraint::Right( const Quat & q ) {
-	Mat4 R;
-	
-	// TODO: Add code
-
-	return R.Transpose();
-}

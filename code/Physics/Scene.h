@@ -36,6 +36,9 @@ public:
 	void AddConvex(Vec3 position, Quat orientation, float mass,
 		float elasity, const Vec3* pts, int numPt, float friction);
 
+	void AddDistanceConstrain(Body* bodyA, Vec3 anchorA, Vec3 axisA, 
+		Body* bodyB, Vec3 anchorB, Vec3 axisB);
+
 	void Reset();
 
 	void Clear();
@@ -44,7 +47,15 @@ private:
 
 	struct Command
 	{
-		EShape type;
+		enum ECommandType
+		{
+			Sphere,
+			Plane,
+			Box,
+			Convex,
+			DistanceConstraint
+		} type;
+
 		Vec3 position;
 		Quat orientation;
 		float mass;
@@ -70,12 +81,20 @@ private:
 		{
 			std::vector<Vec3> pts;
 		} convex;
+
+		Body* bodyA;
+		Vec3 anchorA;
+		Vec3 axisA;
+		Body* bodyB;
+		Vec3 anchorB;
+		Vec3 axisB;
 	};
 
 	void ExecuteCommand(const Command& command);
 
 	std::vector<Command>  m_commands;
 	std::vector<Body*>*   m_bodies;
+	std::vector<Constraint*>* m_constraints;
 	ShapeFactory	 	  m_shapeFactory;
 };
 
@@ -99,8 +118,11 @@ public:
 	SceneState GetCurrentState();
 	void RestoreState(const SceneState& state);
 
+	const std::vector<Body*>& GetBodies() const;
+
+private:
 	std::vector< Body* > m_bodies;
-	std::vector< Constraint * >	m_constraints;
+	std::vector< Constraint *>	m_constraints;
 
 	int maxStepCnt = 0;
 	std::vector<SceneState>	m_sceneStates;
@@ -111,5 +133,6 @@ public:
 
 	Vec3 m_gravity = Vec3(0, 0, -10.0f);
 	std::vector<contact_t> m_contactBuffer;
+
 };
 

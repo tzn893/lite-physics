@@ -139,3 +139,12 @@ float ShapeBox::GetHeight() const
 {
 	return m_bounds.maxs.z - m_bounds.mins.z;
 }
+
+int ShapeBox::GetSeperateAxis(std::vector<Vec3>& outAxis)
+{
+	outAxis.push_back(Vec3(0, 0, 1));
+	outAxis.push_back(Vec3(0, 1, 0));
+	outAxis.push_back(Vec3(1, 0, 0));
+
+	return 3;
+}

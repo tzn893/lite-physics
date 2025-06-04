@@ -87,6 +87,16 @@ void Scene::Update(const float dt_sec) {
 		}
 	);
 
+	/*
+	for (auto& constraint : m_constraints)
+	{
+		constraint->PreSolve(dt_sec);
+	}
+	for (auto& constraint : m_constraints)
+	{
+		constraint->Solve();
+	}
+	*/
 
 	// 按时间顺序依次处理接触点
 	float accumlatedTime = 0.0;
@@ -147,6 +157,7 @@ void Scene::RestoreState(const SceneState& state)
 SceneBuilder::SceneBuilder(Scene* scene)
 {
 	m_bodies = &scene->m_bodies;
+	m_constraints = &scene->m_constraints;
 }
 
 void SceneBuilder::AddSphere(Vec3 position, Quat orientation, float mass, float elasity, float radius, float friction)
@@ -156,7 +167,7 @@ void SceneBuilder::AddSphere(Vec3 position, Quat orientation, float mass, float 
 	command.orientation = orientation;
 	command.mass = mass;
 	command.elasity = elasity;
-	command.type = EShape::SHAPE_SPHERE;
+	command.type = Command::ECommandType::Sphere;
 	command.sphere.radius = radius;
 	command.friction = friction;
 
@@ -172,7 +183,7 @@ void SceneBuilder::AddPlane(Vec3 position, Quat orientation, float mass, float e
 	command.orientation = orientation;
 	command.mass = mass;
 	command.elasity = elasity;
-	command.type = EShape::SHAPE_PLANE;
+	command.type = Command::ECommandType::Plane;
 	command.plane.width = width;
 	command.plane.height = height;
 	command.friction = friction;
@@ -194,7 +205,7 @@ void SceneBuilder::AddBox(Vec3 position, Quat orientation, float mass,
 	command.elasity = elasity;
 	command.mass = mass;
 	command.friction = friction;
-	command.type = EShape::SHAPE_BOX;
+	command.type = Command::ECommandType::Box;
 
 	command.box.extent = extent;
 
@@ -212,13 +223,27 @@ void SceneBuilder::AddConvex(Vec3 position, Quat orientation, float mass,
 	command.elasity = elasity;
 	command.mass = mass;
 	command.friction = friction;
-	command.type = EShape::SHAPE_CONVEX;
+	command.type = Command::ECommandType::Convex;
 
 	command.convex.pts = std::vector<Vec3>(pts, pts + numPt);
 
 	m_commands.push_back(command);
 }
 
+void SceneBuilder::AddDistanceConstrain(Body* bodyA, Vec3 anchorA, Vec3 axisA,
+	Body* bodyB, Vec3 anchorB, Vec3 axisB)
+{
+	Command command;
+	command.bodyA = bodyA;
+	command.bodyB = bodyB;
+	command.axisA = axisA;
+	command.axisB = axisB;
+	command.anchorA = anchorA;
+	command.anchorB = anchorB;
+	command.type = Command::ECommandType::DistanceConstraint;
+
+	m_commands.push_back(command);
+}
 
 void SceneBuilder::Reset()
 {
@@ -238,15 +263,20 @@ void SceneBuilder::Clear()
 		delete (*m_bodies)[i];
 	}
 	m_bodies->clear();
+	for (int i = 0;i < m_constraints->size();i++)
+	{
+		delete (*m_constraints)[i];
+	}
+	m_constraints->clear();
 }
 
 void SceneBuilder::ExecuteCommand(const Command& command)
 {
-	Body* body = new Body();
-
 	switch (command.type)
 	{
-	case EShape::SHAPE_SPHERE:
+	case Command::ECommandType::Sphere:
+	{
+		Body* body = new Body();
 		body->Initialize(
 			command.position,
 			command.orientation,
@@ -257,8 +287,14 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 			command.elasity,
 			command.friction
 		);
+
+		m_bodies->push_back(body);
 		break;
-	case EShape::SHAPE_PLANE:
+	}
+		
+	case Command::ECommandType::Plane:
+	{
+		Body* body = new Body();
 		body->Initialize(
 			command.position,
 			command.orientation,
@@ -269,8 +305,13 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 			command.elasity,
 			command.friction
 		);
+		
+		m_bodies->push_back(body);
 		break;
-	case EShape::SHAPE_BOX:
+	}
+	case Command::ECommandType::Box:
+	{
+		Body* body = new Body();
 		body->Initialize(
 			command.position,
 			command.orientation,
@@ -282,8 +323,13 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 			command.elasity,
 			command.friction
 		);
+
+		m_bodies->push_back(body);
 		break;
-	case EShape::SHAPE_CONVEX:
+	}
+	case Command::ECommandType::Convex:
+	{
+		Body* body = new Body();
 		body->Initialize(
 			command.position,
 			command.orientation,
@@ -294,10 +340,29 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 			command.elasity,
 			command.friction
 		);
+
+		m_bodies->push_back(body);
 		break;
+	}
+	case Command::ECommandType::DistanceConstraint:
+	{
+		ConstraintDistance* DistanceConstraint = new ConstraintDistance();
+
+		DistanceConstraint->SetBodies
+		(
+			command.bodyA, command.anchorA, command.axisA,
+			command.bodyB, command.anchorB, command.axisB
+		);
+		break;
+	}
 	default:
 		break;
 	}
 
-	m_bodies->push_back(body);
+}
+
+const std::vector<Body*>& Scene::GetBodies() const
+{
+	// TODO: 在此处插入 return 语句
+	return m_bodies;
 }

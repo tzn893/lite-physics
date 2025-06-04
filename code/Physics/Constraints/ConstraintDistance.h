@@ -12,9 +12,9 @@ ConstraintDistance
 class ConstraintDistance : public Constraint {
 public:
 	ConstraintDistance() : Constraint(),
-		m_cachedLambda( 1 ),
-		m_Jacobian( 1, 12 ) {
-		m_cachedLambda.Zero();
+		m_Jacobian(12 ) 
+	{
+		m_cachedLambda = 0.0f;
 		m_baumgarte = 0.0f;
 	}
 
@@ -23,8 +23,10 @@ public:
 	void PostSolve() override;
 
 private:
-	MatMN m_Jacobian;
+	// MatMN m_Jacobian;
+	VecN m_Jacobian;
 
-	VecN m_cachedLambda;
+	// VecN m_cachedLambda;
+	float m_cachedLambda;
 	float m_baumgarte;
 };

@@ -561,6 +561,16 @@ public:
 	void Zero();
 	MatMN Transpose() const;
 
+	inline VecN& operator [] (int m)
+	{
+		return rows[m];
+	}
+
+	inline const VecN& operator [] (int m) const
+	{
+		return rows[m];
+	}
+
 public:
 	int		M;	// M rows
 	int		N;	// N columns

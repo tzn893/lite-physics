@@ -35,6 +35,10 @@ public:
 	float GetMass() const;
 	float GetInvMass() const;
 
+	// 收集用于SAT测试的所有轴对应的世界空间向量
+	// 对于不可以用SAT测试的几何体，返回false
+	bool CollectSeperateAxis(std::vector<Vec3>& outAxis);
+
 	bool  HasInfintyMass();
 
 	// 直接作用于质心的冲量

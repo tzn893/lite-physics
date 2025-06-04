@@ -44,12 +44,10 @@ struct MkDifferencePoint
 	}
 };
 
-
 struct ConvexTriangles
 {
 	int a, b, c;
 };
-
 
 class EPASolver
 {
@@ -64,7 +62,11 @@ private:
 	// 找到距离原点最近的三角形
 	int FindClosestTriangle();
 
-	float SignedDistanceToTriangle(const ConvexTriangles& tri, const Vec3& pt = Vec3(0, 0, 0));
+	// 计算点到三角形上最近点的距离
+	float ClosestPointDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt);
+
+	// 计算点投影到三角形对应平面上的有符号距离
+	float ProjectedSignedDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt);
 
 	// 检查一个新点是否已经在被构造的凸包内部
 	bool HasPoint(const MkDifferencePoint& pt);

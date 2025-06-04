@@ -21,6 +21,7 @@ void ResolveContact( contact_t & contact )
 	/*
 	相关公式见https://gamephysicsweekend.github.io/pdfs/GamePhysicsInOneWeekend.pdf，p.50
 	*/
+
 	Vec3 rA = contact.ptOnA_WorldSpace - bodyA->GetCenterOfMassWorldSpace();
 	Vec3 rB = contact.ptOnB_WorldSpace - bodyB->GetCenterOfMassWorldSpace();
 
@@ -61,7 +62,7 @@ void ResolveContact( contact_t & contact )
 	bodyB->ApplyImpulse(JfB, contact.ptOnB_WorldSpace);
 
 	// 利用重心不变修正位置
-	Vec3 dist = contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace;
+	Vec3 dist = contact.normal * (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dot(contact.normal);
 
 	bodyA->FixPosition(dist * bodyA->GetInvMass() / (bodyA->GetInvMass() + bodyB->GetInvMass()));
 	bodyB->FixPosition(dist * -bodyB->GetInvMass() / (bodyA->GetInvMass() + bodyB->GetInvMass()));

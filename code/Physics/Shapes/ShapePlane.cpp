@@ -86,3 +86,10 @@ Vec3 ShapePlane::GetNormalWorldSpace(Quat ori)
 {
     return (ori.ToMat3().Transpose().Inverse() * GetNormalLocalSpace()).Normalize();
 }
+
+int ShapePlane::GetSeperateAxis(std::vector<Vec3>& outAxis)
+{
+    outAxis.push_back(Vec3(0, 0, 1));
+
+    return 1;
+}

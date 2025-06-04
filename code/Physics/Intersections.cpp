@@ -3,12 +3,113 @@
 //
 #include "Intersections.h"
 #include "GJK.h"
+#include "SAT.h"
 #include "Math/Helpers.h"
 #include <functional>
 
 #include <array>
 
 #define p_count_of(arr) (sizeof(arr) / sizeof(arr[0]))
+
+
+// 对于两个box，使用SAT进行碰撞检测
+void BoxBoxIntersect(Body* boxA, Body* boxB, contact_t& contact)
+{
+	contact.bodyA = boxA;
+	contact.bodyB = boxB;
+
+	SATSolver(boxA, boxB).HasIntersection(contact.ptOnA_WorldSpace, contact.ptOnB_WorldSpace,
+		contact.separationDistance, contact.normal);
+
+	contact.ptOnA_LocalSpace = boxA->WorldSpacePointToLocalSpace(contact.ptOnA_WorldSpace);
+	contact.ptOnB_LocalSpace = boxB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
+	contact.timeOfImpact = 0.0f;
+}
+
+// 对于球体和方形的碰撞检测
+void SphereBoxIntersect(Body* sphereA, Body* boxB, contact_t& contact)
+{
+	assert(sphereA->GetShape()->GetType() == EShape::SHAPE_SPHERE &&
+		boxB->GetShape()->GetType() == EShape::SHAPE_BOX);
+
+	ShapeSphere* sphereAShape = dynamic_cast<ShapeSphere*>(sphereA->GetShape());
+	ShapeBox* boxBShape = dynamic_cast<ShapeBox*>(boxB->GetShape());
+
+	float sphereRadius = sphereAShape->GetRadius();
+	Vec3 boxHalfExtent = Vec3(boxBShape->GetWidth(), boxBShape->GetLength(), boxBShape->GetHeight()) / 2.0f; 
+
+	// 首先将球体的中心点转换到方形的局部空间
+	Vec3 boxCenter = boxB->GetCenterOfMassWorldSpace();
+	Quat boxOrient = boxB->GetOrientation();
+
+	// 转换到方形的局部空间下球体的坐标
+	Vec3 sphereCenter = boxOrient.Inverse().RotatePoint(sphereA->GetCenterOfMassWorldSpace() - boxCenter);
+	
+	Vec3 closestPointOnBox, closestPointOnSphere;
+	bool intersect = false;
+
+	// 球的中心在方形内部
+	if (Abs(sphereCenter.x) < boxHalfExtent.x && Abs(sphereCenter.y) < boxHalfExtent.y 
+		&& Abs(sphereCenter.z) < boxHalfExtent.z)
+	{
+		intersect = true;
+
+		// 找到方形边缘距离圆心最近的点以及对应的方向
+		Vec3 closestPt;
+		float closestDistance = sphereRadius;
+		int closestAxis = 0;
+
+		int axisDimension[] = { 0, 0, 1, 1, 2, 2 };
+		int axisSign[] = {1, -1, 1, -1, 1, -1};
+		Vec3 axisDir[] = { Vec3( 1, 0, 0), Vec3(-1, 0, 0), Vec3( 0, 1, 0), 
+			Vec3( 0,-1, 0), Vec3( 0, 0, 1), Vec3( 0, 0,-1) };
+
+		for (int i = 0; i < 6; i++)
+		{
+			float axisDistance = Abs(sphereCenter[axisDimension[i]] - boxHalfExtent[axisDimension[i]] * axisSign[i]);
+			if (axisDistance < closestDistance)
+			{
+				closestAxis = i;
+				closestDistance = axisDistance;
+				closestPt = sphereCenter;
+				closestPt[closestAxis] = boxHalfExtent[axisDimension[i]] * axisSign[i];
+			}
+		}
+
+		closestPointOnSphere = sphereCenter + axisDir[closestAxis] * -1 * sphereRadius;
+		closestPointOnBox = closestPt;
+	}
+	else
+	{
+		closestPointOnBox = Clamp(sphereCenter,
+			Vec3(-boxHalfExtent.x, -boxHalfExtent.y, -boxHalfExtent.z),
+			Vec3(boxHalfExtent.x, boxHalfExtent.y, boxHalfExtent.z));
+		closestPointOnSphere = (closestPointOnBox - sphereCenter).Dir() * sphereRadius +
+			sphereCenter;
+
+		intersect = (sphereCenter - closestPointOnBox).GetLengthSqr() < sphereRadius * sphereRadius;
+	}
+
+
+	contact.ptOnB_WorldSpace = boxOrient.RotatePoint(closestPointOnBox) + boxCenter;
+	contact.ptOnB_LocalSpace = boxB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
+	contact.ptOnA_WorldSpace = boxOrient.RotatePoint(closestPointOnSphere) + boxCenter;
+	contact.ptOnA_LocalSpace = sphereA->WorldSpacePointToLocalSpace(contact.ptOnA_WorldSpace);
+
+	contact.bodyA = sphereA;
+	contact.bodyB = boxB;
+
+	contact.normal = (contact.ptOnA_WorldSpace - contact.ptOnB_WorldSpace).Dir();
+	contact.separationDistance = (contact.ptOnA_WorldSpace - contact.ptOnB_WorldSpace).GetMagnitude() * 
+		(intersect ? -1 : 1);
+	contact.timeOfImpact = 0.0f;
+}
+
+void BoxSphereIntersect(Body* boxA, Body* sphereB, contact_t& contact)
+{
+	SphereBoxIntersect(sphereB, boxA, contact);
+}
+
 
 void PlanePlaneIntersect(Body* planeA, Body* planeB, contact_t& contact)
 {
@@ -83,6 +184,7 @@ void PlaneShapeIntersect(Body* planeB, Body* sphereA, contact_t& contact)
 
 void SphereSphereIntersect(Body* sphereA, Body* sphereB, contact_t& contact)
 {
+
 	assert(sphereA->GetShape()->GetType() == Shape::SHAPE_SPHERE &&
 		sphereB->GetShape()->GetType() == Shape::SHAPE_SPHERE);
 	
@@ -140,10 +242,14 @@ struct IntersectionFunctionTableItem
 
 IntersectionFunctionTableItem g_intersectionFunctionTable[] =
 {
-	{ EShape::SHAPE_PLANE, EShape::SHAPE_PLANE, PlanePlaneIntersect },
-	{ EShape::SHAPE_PLANE, EShape::SHAPE_SPHERE, PlaneShapeIntersect },
-	{ EShape::SHAPE_SPHERE, EShape::SHAPE_PLANE, SpherePlaneIntersect },
-	{  EShape::SHAPE_SPHERE, EShape::SHAPE_SPHERE, SphereSphereIntersect }
+	{ EShape::SHAPE_PLANE	, EShape::SHAPE_PLANE	, PlanePlaneIntersect	},
+	{ EShape::SHAPE_PLANE	, EShape::SHAPE_SPHERE	, PlaneShapeIntersect	},
+	{ EShape::SHAPE_SPHERE	, EShape::SHAPE_PLANE	, SpherePlaneIntersect	},
+	{ EShape::SHAPE_SPHERE	, EShape::SHAPE_SPHERE	, SphereSphereIntersect	},
+	{ EShape::SHAPE_SPHERE	, EShape::SHAPE_BOX		, SphereBoxIntersect	},
+	{ EShape::SHAPE_BOX		, EShape::SHAPE_SPHERE	, BoxSphereIntersect	},
+	// { EShape::SHAPE_BOX		, EShape::SHAPE_BOX		, BoxBoxIntersect		}
+
 };
 
 IntersectionFunc FindIntersectionFunction(Body* bodyA, Body* bodyB)

@@ -19,7 +19,11 @@ public:
 	Vec3 GetNormalLocalSpace();
 	Vec3 GetNormalWorldSpace(Quat ori);
 
-public:
+	// 获取物体所有用于SAT测试的轴在局部空间下的向量，返回物体对应分离轴的数量
+	// 对于不可使用SAT测试的物体返回-1
+	virtual int GetSeperateAxis(std::vector<Vec3>& outAxis);
+
+private:
 	float m_width, m_height;
 
 	// plane的support函数类似一个很薄的box

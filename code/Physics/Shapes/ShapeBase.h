@@ -55,6 +55,10 @@ public:
 
 	virtual std::optional<PointArrayAccessor> GetPointData() { return std::nullopt; }
 
+	// 获取物体所有用于SAT测试的轴在局部空间下的向量，返回物体对应分离轴的数量
+	// 对于不可使用SAT测试的物体返回-1
+	virtual int GetSeperateAxis(std::vector<Vec3>& outAxis);
+
 protected:
 	Vec3 m_centerOfMass;
 };

@@ -80,10 +80,10 @@ void Application::Initialize() {
 	m_scene->Reset();
 	Start();
 
-	m_models.reserve( m_scene->m_bodies.size() );
-	for ( int i = 0; i < m_scene->m_bodies.size(); i++ ) {
+	m_models.reserve( m_scene->GetBodies().size());
+	for ( int i = 0; i < m_scene->GetBodies().size(); i++ ) {
 		Model * model = new Model();
-		model->BuildFromShape( m_scene->m_bodies[ i ]->GetShape());
+		model->BuildFromShape( m_scene->GetBodies()[ i ]->GetShape());
 		model->MakeVBO( &m_deviceContext );
 
 		m_models.push_back( model );
@@ -831,8 +831,8 @@ void Application::UpdateUniforms() {
 		//
 		//	Update the uniform buffer with the body positions/orientations
 		//
-		for ( int i = 0; i < m_scene->m_bodies.size(); i++ ) {
-			Body* body = m_scene->m_bodies[ i ];
+		for ( int i = 0; i < m_scene->GetBodies().size(); i++ ) {
+			Body* body = m_scene->GetBodies()[ i ];
 
 			Vec3 fwd = body->GetOrientation().RotatePoint(Vec3(1, 0, 0));
 			Vec3 up = body->GetOrientation().RotatePoint( Vec3( 0, 0, 1 ) );

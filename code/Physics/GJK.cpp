@@ -1,4 +1,4 @@
-//
+ //
 //  GJK.cpp
 //
 #include "GJK.h"
@@ -252,7 +252,7 @@ void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDiffer
 
 
 		// 如果新点仍在凸包内部，说明无法进一步扩张，返回碰撞检测结果
-		if (HasPoint(newPt) || SignedDistanceToTriangle(closestTriangle, newPt.pt) <= 1e-4f)
+		if (HasPoint(newPt) || ClosestPointDistanceFromTriangle(closestTriangle, newPt.pt) <= 1e-4f)
 		{
 			// 找到原点投影到最近点上的重心坐标
 			MkDifferencePoint closestTrianglePts[3] = { points[closestTriangle.a],
@@ -314,7 +314,7 @@ int EPASolver::FindClosestTriangle()
 		ConvexTriangles tri = triangles[idx];
 
 		// 由于三角形法线方向与原点相反，因此距离一定小于0
-		float distance = abs(SignedDistanceToTriangle(tri));
+		float distance = ClosestPointDistanceFromTriangle(tri, Vec3(0, 0, 0));
 		// assert(distance >= 0.0f);
 		if (distance < minDistance)
 		{
@@ -326,7 +326,18 @@ int EPASolver::FindClosestTriangle()
 	return minIdx;
 }
 
-float EPASolver::SignedDistanceToTriangle(const ConvexTriangles& tri, const Vec3& pt)
+float EPASolver::ClosestPointDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt)
+{
+	Vec3 trianglePts[] =
+	{ points[tri.a].pt - pt, points[tri.b].pt - pt, points[tri.c].pt - pt};
+
+	Vec3 lambda = SignedVolume(trianglePts[0], trianglePts[1], trianglePts[2]);
+	Vec3 closestPt = trianglePts[0] * lambda.x + trianglePts[1] * lambda.y + trianglePts[2] * lambda.z;
+
+	return closestPt.GetMagnitude();
+}
+
+float EPASolver::ProjectedSignedDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt)
 {
 	return DistanceFromTriangle(points[tri.a].pt, points[tri.b].pt, points[tri.c].pt, pt);
 }
@@ -350,7 +361,7 @@ void EPASolver::RemovePointFacingTriangle(const Vec3& pt)
 	{
 		ConvexTriangles tri = triangles[idx];
 		// 三角形不应该面向新加入的点
-		if (SignedDistanceToTriangle(tri, pt) >= 0)
+		if (ProjectedSignedDistanceFromTriangle(tri, pt) >= 0)
 		{
 			triangles.erase(triangles.begin() + idx);
 		}
@@ -410,7 +421,7 @@ void EPASolver::FillTrianglesWithNewPoint()
 		int lastPtIdx = points.size() - 1;
 		ConvexTriangles tri{ lastPtIdx, edge.a, edge.b };
 		// 保证三角形的法线总是朝外
-		if (SignedDistanceToTriangle(tri) > 0)
+		if (ProjectedSignedDistanceFromTriangle(tri, Vec3(0, 0, 0)) > 0)
 		{
 			std::swap(tri.b, tri.c);
 		}
