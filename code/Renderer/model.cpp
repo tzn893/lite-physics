@@ -486,8 +486,9 @@ bool Model::BuildFromShape( const Shape * shape ) {
 		// Build the connected convex hull from the points
 		std::vector< Vec3 > hullPts;
 		std::vector< ConvexTriangle > hullTris;
-		std::vector< ConvexEdge> _;
-		BuildConvexHull(shapeConvex->GetVertices(), hullPts, hullTris, _, _Õ¼Î»·û_);
+		std::vector< ConvexEdge> _1;
+		std::vector<FaceAdjFaces> _2;
+		BuildConvexHull(shapeConvex->GetVertices(), hullPts, hullTris, _1, _2);
 
 		// Calculate smoothed normals
 		std::vector< Vec3 > normals;

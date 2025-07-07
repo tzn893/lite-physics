@@ -12,10 +12,10 @@
 #define p_count_of(arr) (sizeof(arr) / sizeof(arr[0]))
 
 
-// ¶ÔÓÚÁ½¸öbox£¬Ê¹ÓÃSAT½øĞĞÅö×²¼ì²â
+// å¯¹äºä¸¤ä¸ªboxï¼Œä½¿ç”¨SATè¿›è¡Œç¢°æ’æ£€æµ‹
 void BoxBoxIntersect(Body* boxA, Body* boxB, IntersectionManifold& manifold)
 {
-	// TODO ÖØ¹¹GJK£¬½«Æä·µ»ØÖµÉèÖÃÎªmanifold
+	// TODO é‡æ„GJKï¼Œå°†å…¶è¿”å›å€¼è®¾ç½®ä¸ºmanifold
 	manifold.contactCount = 1;
 	contact_t& contact = manifold.contacts[0];
 
@@ -30,7 +30,7 @@ void BoxBoxIntersect(Body* boxA, Body* boxB, IntersectionManifold& manifold)
 	contact.timeOfImpact = 0.0f;
 }
 
-// ¶ÔÓÚÇòÌåºÍ·½ĞÎµÄÅö×²¼ì²â
+// å¯¹äºçƒä½“å’Œæ–¹å½¢çš„ç¢°æ’æ£€æµ‹
 void SphereBoxIntersect(Body* sphereA, Body* boxB, IntersectionManifold& manifold)
 {
 	assert(sphereA->GetShape()->GetType() == EShape::SHAPE_SPHERE &&
@@ -42,23 +42,23 @@ void SphereBoxIntersect(Body* sphereA, Body* boxB, IntersectionManifold& manifol
 	float sphereRadius = sphereAShape->GetRadius();
 	Vec3 boxHalfExtent = Vec3(boxBShape->GetWidth(), boxBShape->GetLength(), boxBShape->GetHeight()) / 2.0f; 
 
-	// Ê×ÏÈ½«ÇòÌåµÄÖĞĞÄµã×ª»»µ½·½ĞÎµÄ¾Ö²¿¿Õ¼ä
+	// é¦–å…ˆå°†çƒä½“çš„ä¸­å¿ƒç‚¹è½¬æ¢åˆ°æ–¹å½¢çš„å±€éƒ¨ç©ºé—´
 	Vec3 boxCenter = boxB->GetCenterOfMassWorldSpace();
 	Quat boxOrient = boxB->GetOrientation();
 
-	// ×ª»»µ½·½ĞÎµÄ¾Ö²¿¿Õ¼äÏÂÇòÌåµÄ×ø±ê
+	// è½¬æ¢åˆ°æ–¹å½¢çš„å±€éƒ¨ç©ºé—´ä¸‹çƒä½“çš„åæ ‡
 	Vec3 sphereCenter = boxOrient.Inverse().RotatePoint(sphereA->GetCenterOfMassWorldSpace() - boxCenter);
 	
 	Vec3 closestPointOnBox, closestPointOnSphere;
 	bool intersect = false;
 
-	// ÇòµÄÖĞĞÄÔÚ·½ĞÎÄÚ²¿
+	// çƒçš„ä¸­å¿ƒåœ¨æ–¹å½¢å†…éƒ¨
 	if (Abs(sphereCenter.x) < boxHalfExtent.x && Abs(sphereCenter.y) < boxHalfExtent.y 
 		&& Abs(sphereCenter.z) < boxHalfExtent.z)
 	{
 		intersect = true;
 
-		// ÕÒµ½·½ĞÎ±ßÔµ¾àÀëÔ²ĞÄ×î½üµÄµãÒÔ¼°¶ÔÓ¦µÄ·½Ïò
+		// æ‰¾åˆ°æ–¹å½¢è¾¹ç¼˜è·ç¦»åœ†å¿ƒæœ€è¿‘çš„ç‚¹ä»¥åŠå¯¹åº”çš„æ–¹å‘
 		Vec3 closestPt;
 		float closestDistance = sphereRadius;
 		int closestAxis = 0;
@@ -137,13 +137,13 @@ void SpherePlaneIntersect(Body* sphereA, Body* planeB, IntersectionManifold& man
 	Vec3 planePos = planeB->GetBodyPositionWorldSpace();
 	Vec3 spherePos = sphereA->GetBodyPositionWorldSpace();
 
-	//// Æ½Ãæ·½³ÌÎª Ax+By+Cz+D=0, ÆäÖĞA,B,CÎªplaneNormalµÄÈı¸ö·ÖÁ¿
+	//// å¹³é¢æ–¹ç¨‹ä¸º Ax+By+Cz+D=0, å…¶ä¸­A,B,Cä¸ºplaneNormalçš„ä¸‰ä¸ªåˆ†é‡
 	float D = -planeNormal.Dot(planePos);
 	float offset = planeNormal.Dot(spherePos) + D;
 	
 	float dist = Abs(offset) / Sqrt(planeNormal.Dot(planeNormal));
 
-	// ÎŞÏŞ´óµÄÆ½Ãæ
+	// æ— é™å¤§çš„å¹³é¢
 	manifold.contactCount = 1;
 	contact_t& contact = manifold.contacts[0];
 
@@ -157,21 +157,21 @@ void SpherePlaneIntersect(Body* sphereA, Body* planeB, IntersectionManifold& man
 	Vec3 planePtWorld = spherePos - contact.normal * dist;
 	Vec3 planePtLocal = planeB->WorldSpacePointToLocalSpace(planePtWorld);
 
-	// ÔÚÆ½ÃæµÄlocal space¼ÆËãÔ²ÓëÓĞÏŞÆ½ÃæµÄÏà½»
-	// ¿ÉÒÔ·ÖÎªÈıÖÖÇé¿ö 
-	// 1.Ô²ĞÄÔÚÆ½ÃæÉÏµÄÍ¶Ó°µãÔÚÓĞÏŞÆ½ÃæÄÚ£¬Ô²µÄ×îµ×²¿µãÓëÆ½ÃæÏà½»£¬ÍË»¯ÎªÎŞÏŞ´óµÄÆ½ÃæÏà½»¡£
-	// 2.Ô²ĞÄÔÚÆ½ÃæÍâ¡£¹ıÔ²ĞÄ¶ÔÆ½ÃæËÄÌõ±ß¶ÔÓ¦µÄÖ±Ïß×ö´¹Ïß£¬Èô´æÔÚÄ³µã´¦ÓÚ¶ÔÓ¦±ßµÄÏß¶ÎÄÚ£¬Ôò¸ÃµãÎªÔ²ÓëÆ½Ãæ½»µã¡£
-	// 3.Ô²ĞÄÔÚÆ½ÃæÍâ¡£¹ıÔ²ĞÄ¶ÔÆ½ÃæËÄÌõ±ß¶ÔÓ¦µÄÖ±Ïß×ö´¹Ïß£¬ÇÒËùÓĞµã¶¼ÔÚ¶ÔÓ¦Ïß¶ÎÍâ£¬ÔòÀëÔ²ĞÄ×î½üµÄµãÎªÔ²ÓëÆ½Ãæ½»µã¡£
-	// Çé¿ö2.,3.¶ÔÓ¦µãµÄ×ø±ê¿ÉÒÔÖ±½ÓÊ¹ÓÃClamp½«½Ó´¥µã·¶Î§ÏŞÖÆÔÚÆ½ÃæÄÚÖ±½Ó¼ÆËã¡£
+	// åœ¨å¹³é¢çš„local spaceè®¡ç®—åœ†ä¸æœ‰é™å¹³é¢çš„ç›¸äº¤
+	// å¯ä»¥åˆ†ä¸ºä¸‰ç§æƒ…å†µ 
+	// 1.åœ†å¿ƒåœ¨å¹³é¢ä¸Šçš„æŠ•å½±ç‚¹åœ¨æœ‰é™å¹³é¢å†…ï¼Œåœ†çš„æœ€åº•éƒ¨ç‚¹ä¸å¹³é¢ç›¸äº¤ï¼Œé€€åŒ–ä¸ºæ— é™å¤§çš„å¹³é¢ç›¸äº¤ã€‚
+	// 2.åœ†å¿ƒåœ¨å¹³é¢å¤–ã€‚è¿‡åœ†å¿ƒå¯¹å¹³é¢å››æ¡è¾¹å¯¹åº”çš„ç›´çº¿åšå‚çº¿ï¼Œè‹¥å­˜åœ¨æŸç‚¹å¤„äºå¯¹åº”è¾¹çš„çº¿æ®µå†…ï¼Œåˆ™è¯¥ç‚¹ä¸ºåœ†ä¸å¹³é¢äº¤ç‚¹ã€‚
+	// 3.åœ†å¿ƒåœ¨å¹³é¢å¤–ã€‚è¿‡åœ†å¿ƒå¯¹å¹³é¢å››æ¡è¾¹å¯¹åº”çš„ç›´çº¿åšå‚çº¿ï¼Œä¸”æ‰€æœ‰ç‚¹éƒ½åœ¨å¯¹åº”çº¿æ®µå¤–ï¼Œåˆ™ç¦»åœ†å¿ƒæœ€è¿‘çš„ç‚¹ä¸ºåœ†ä¸å¹³é¢äº¤ç‚¹ã€‚
+	// æƒ…å†µ2.,3.å¯¹åº”ç‚¹çš„åæ ‡å¯ä»¥ç›´æ¥ä½¿ç”¨Clampå°†æ¥è§¦ç‚¹èŒƒå›´é™åˆ¶åœ¨å¹³é¢å†…ç›´æ¥è®¡ç®—ã€‚
 
 	Vec2 planeExtent = planeBShape->GetExtent();
 
-	// µÃµ½ĞŞÕıºóµÄ½»µãÎ»ÖÃ
+	// å¾—åˆ°ä¿®æ­£åçš„äº¤ç‚¹ä½ç½®
 	planePtLocal = Clamp(planePtLocal,  
 		Vec3(- planeExtent.x / 2.0f, - planeExtent.y / 2.0f, planePtLocal.z),
 		Vec3(planeExtent.x / 2.0f, planeExtent.y / 2.0f, planePtLocal.z)
 	);
-	// ½«½»µã×ªµ½ÊÀ½ç¿Õ¼ä
+	// å°†äº¤ç‚¹è½¬åˆ°ä¸–ç•Œç©ºé—´
 	planePtWorld = planeB->LocalSpacePointToWorldSpace(planePtLocal);
 
 	contact.normal = (spherePos - planePtWorld).Dir();
@@ -225,13 +225,23 @@ void SphereSphereIntersect(Body* sphereA, Body* sphereB, IntersectionManifold& m
 	contact.timeOfImpact = 0;
 }
 
-// ¶ÔÓÚÈÎÒâĞÎ×´£¬Ê¹ÓÃGJKËã·¨×öÅö×²¼ì²â
+// å¯¹äºä»»æ„å½¢çŠ¶ï¼Œä½¿ç”¨GJKç®—æ³•åšç¢°æ’æ£€æµ‹
 void GeneralIntersect(Body* bodyA, Body* bodyB, IntersectionManifold& manifold)
 {
+	/*
 	manifold.contactCount = 1;
 	contact_t& contact = manifold.contacts[0];
+	*/
 
-	bool hasIntersection = GJK_DoesIntersect(bodyA, bodyB, 1e-4f, contact.ptOnA_WorldSpace, contact.ptOnB_WorldSpace);
+	Vec3 ptOnA, ptOnB;
+	bool hasIntersection = GJK_DoesIntersect(bodyA, bodyB, 1e-4f, ptOnA, ptOnB);
+
+	if(hasIntersection)
+	{
+		ClippingManifold(bodyA, bodyB, ptOnA, ptOnB, manifold);
+	}
+	
+	/*
 	contact.bodyA = bodyA;
 	contact.bodyB = bodyB;
 	contact.normal = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dir() * -1;
@@ -242,6 +252,7 @@ void GeneralIntersect(Body* bodyA, Body* bodyB, IntersectionManifold& manifold)
 		(hasIntersection ? -1 : 1);
 
 	contact.timeOfImpact = 0;
+	*/
 }
 
 using IntersectionFunc = std::function<void(Body* bodyA, Body* bodyB, IntersectionManifold& contact)>;
@@ -304,14 +315,14 @@ float GetThickness(Body* bodyA, Vec3 dir)
 
 void GeneralCCDSolver(Body* bodyA, Body* bodyB, IntersectionManifold& manifold, IntersectionFunc intersectionFunc, float dt)
 {
-	 // TODO Ä¿Ç°»¹Î´ÊµÏÖÍ¨ÓÃµÄCCD
+	 // TODO ç›®å‰è¿˜æœªå®ç°é€šç”¨çš„CCD
 	assert(false);
 }
 
 
 void SpherePlaneCCDSolver(Body* sphereA, Body* planeB, IntersectionManifold& manifold, float dt)
 {
-	// TODO Ä¿Ç°Ö±½Ó¶ÔÇòÌåºÍÆ½Ãæ×öÏà½»²âÊÔ£¬²»½øĞĞÈÎºÎCCD¼ÆËã
+	// TODO ç›®å‰ç›´æ¥å¯¹çƒä½“å’Œå¹³é¢åšç›¸äº¤æµ‹è¯•ï¼Œä¸è¿›è¡Œä»»ä½•CCDè®¡ç®—
 	SpherePlaneIntersect(sphereA, planeB, manifold);
 }
 
@@ -338,7 +349,7 @@ void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, IntersectionManifold& m
 	Vec3 relativeDir = relativeVel.Dir();
 
 	float minCCDVel = (sphereAShape->GetRadius() + sphereBShape->GetRadius()) / dt;
-	// Èç¹ûÏà¶ÔËÙ¶ÈĞ¡ÓÚ×îĞ¡µÄËí´©ËÙ¶È£¬Ôò²»ĞèÒª½øĞĞCCD
+	// å¦‚æœç›¸å¯¹é€Ÿåº¦å°äºæœ€å°çš„éš§ç©¿é€Ÿåº¦ï¼Œåˆ™ä¸éœ€è¦è¿›è¡ŒCCD
 	if (relativeVel.Dot(relativeVel) < minCCDVel * minCCDVel)
 	{
 		SphereSphereIntersect(sphereA, sphereB, manifold);
@@ -351,15 +362,15 @@ void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, IntersectionManifold& m
 	contact.bodyA = sphereA;
 	contact.bodyB = sphereB;
 
-	// ×öÇòÌåÉäÏß¼ì²â£¬ÅĞ¶ÏÁ½ÇòÏà½»Ê±¼ä
+	// åšçƒä½“å°„çº¿æ£€æµ‹ï¼Œåˆ¤æ–­ä¸¤çƒç›¸äº¤æ—¶é—´
 	float t0, t1;
 	Vec3 relativeTravelDistance = relativeVel * dt;
 	if (SphereRayIntersection(spherePosB, sphereAShape->GetRadius() + sphereBShape->GetRadius(),
 		spherePosA, relativeDir, t0, t1))
 	{
-		// ÈôÏà½»£¬t0Îª×îÔçÏà½»µÄÊ±¼äµã£¬
+		// è‹¥ç›¸äº¤ï¼Œt0ä¸ºæœ€æ—©ç›¸äº¤çš„æ—¶é—´ç‚¹ï¼Œ
 		t0 = Max(t0 , 0.0f);
-		// Ö»ÓĞt0Ğ¡ÓÚdtÊ±£¬Á½ÎïÌå²Å»áÔÚµ±Ç°Ö¡Ïà½»
+		// åªæœ‰t0å°äºdtæ—¶ï¼Œä¸¤ç‰©ä½“æ‰ä¼šåœ¨å½“å‰å¸§ç›¸äº¤
 		if (t0 < relativeVel.GetMagnitude() * dt)
 		{
 			float timeOfImpact = t0 / relativeVel.GetMagnitude();

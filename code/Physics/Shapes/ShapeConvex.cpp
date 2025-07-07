@@ -281,7 +281,7 @@ void FindConvexEdgesAndAdj(const std::vector<ConvexTriangle>& hullTris, std::vec
 {
 	hullAdjFaces.resize(hullTris.size(), FaceAdjFaces{});
 	std::unordered_map<ConvexEdge, int> edges;
-	for (int faceIdx = 0; faceIdx < hullTris.size(); faceIdx++);
+	for (int faceIdx = 0; faceIdx < hullTris.size(); faceIdx++)
 	{
 		ConvexTriangle tri = hullTris[faceIdx];
 		ConvexEdge triangleEdges[3] = { ConvexEdge(tri.a, tri.b) , ConvexEdge(tri.b, tri.c) , ConvexEdge(tri.c, tri.a) };

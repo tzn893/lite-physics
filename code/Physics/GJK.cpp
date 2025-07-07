@@ -12,8 +12,42 @@ using opt = std::optional <T>;
 template<typename ...Args>
 using tpl = std::tuple<Args...>;
 
-// 来自https://github.com/felipeek/raw-physics/blob/master/src/physics/clipping.cpp
-bool CollisionDistanceBetweenSkewLines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2, Vec3& l1, Vec3& l2, float& _n, float& _m) 
+static void BuildClippingPlanes(const std::vector<Vec3>& planePts, const Vec3& planeNormal, std::vector<Vec4>& clippingPlanes)
+{
+	float planeDistance = planePts[0].Dot(planeNormal);
+
+	clippingPlanes.push_back(Vec4(planeNormal.x, planeNormal.y, planeNormal.z, planeDistance));
+
+	for(size_t idx = 0; idx < planePts.size(); idx++)
+	{
+		Vec3 start = planePts[idx];
+		Vec3 end = planePts[(idx + 1) % planePts.size()];
+		Vec3 clippingPlaneNormal = planeNormal.Cross(end - start).Dir();
+		float clippingPlaneDistance = clippingPlaneNormal.Dot(start);
+		clippingPlanes.push_back(Vec4(clippingPlaneNormal.x, clippingPlaneNormal.y, clippingPlaneNormal.z,
+			clippingPlaneDistance));
+	}
+
+}
+
+static bool IsVertexInsidePlane(const Vec3& vert, const Vec4& plane)
+{
+	Vec3 planeNormal = Vec3(plane.x, plane.y, plane.z);
+	Vec3 planePt =  planeNormal * plane.w;
+	return (vert - planePt).Dot(planeNormal) < 0.0f;
+}
+
+
+static Vec3 FindIntersectionWithPlaneAndPoint(const Vec4& plane, const Vec3& start, const Vec3& end)
+{
+	Vec3 planeNormal = Vec3(plane.x, plane.y, plane.z);
+	float planeDistance = plane.w;
+	float t = (planeDistance - planeNormal.Dot(start)) / Max(planeNormal.Dot(end - start), 1e-8f);
+	return start * (1 - t) + end * t;
+}
+
+// 来自 https://github.com/felipeek/raw-physics/blob/master/src/physics/clipping.cpp
+static bool CollisionDistanceBetweenSkewLines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2, Vec3& l1, Vec3& l2, float& _n, float& _m) 
 {
 	float n1 = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;
 	float n2 = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
@@ -38,34 +72,43 @@ bool CollisionDistanceBetweenSkewLines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2, Vec3&
 }
 
 
-void SutherlandHodgmanClip(const std::vector<Vec3>& subjectPolygon, const std::vector<Vec3>& clipPolygon, std::vector<Vec3>& outputPolygon)
+void SutherlandHodgmanClip(const std::vector<Vec4>& clippingPlanes, std::vector<Vec3> clipPolygon, std::vector<Vec3>& outputPolygon)
 {
 	outputPolygon = std::vector<Vec3>();
-	for (size_t i = 0; i < clipPolygon.size(); ++i)
+	for (const Vec4& clippingPlane: clippingPlanes)
 	{
-		const Vec3& clipEdgeStart = clipPolygon[i];
-		const Vec3& clipEdgeEnd = clipPolygon[(i + 1) % clipPolygon.size()];
-		std::vector<Vec3> inputPolygon = outputPolygon;
-		outputPolygon.clear();
-		Vec3 prevVertex = inputPolygon.back();
-		for (const Vec3& currentVertex : inputPolygon)
+		for (size_t i = 0; i < clipPolygon.size(); ++i)
 		{
-			if (IsInside(currentVertex, clipEdgeStart, clipEdgeEnd))
+			Vec3 startPt = clipPolygon[(i + clipPolygon.size() - 1) % clipPolygon.size()];
+			Vec3 endPt = clipPolygon[i];
+
+			bool IsStartInPlane = IsVertexInsidePlane(startPt, clippingPlane);
+			bool IsEndInPlane = IsVertexInsidePlane(endPt, clippingPlane);
+
+			if(IsStartInPlane && IsEndInPlane)
 			{
-				if (!IsInside(prevVertex, clipEdgeStart, clipEdgeEnd))
+				outputPolygon.push_back(endPt);
+			}
+			else
+			{
+				Vec3 clippedPt = FindIntersectionWithPlaneAndPoint(clippingPlane, startPt, endPt);
+				if(IsStartInPlane && !IsEndInPlane)
 				{
-					outputPolygon.push_back(Intersect(prevVertex, currentVertex, clipEdgeStart, clipEdgeEnd));
+					outputPolygon.push_back(clippedPt);
 				}
-				outputPolygon.push_back(currentVertex);
+				else if(!IsStartInPlane && IsEndInPlane)
+				{
+					outputPolygon.push_back(clippedPt);
+					outputPolygon.push_back(endPt);
+				}
 			}
-			else if (IsInside(prevVertex, clipEdgeStart, clipEdgeEnd))
-			{
-				outputPolygon.push_back(Intersect(prevVertex, currentVertex, clipEdgeStart, clipEdgeEnd));
-			}
-			prevVertex = currentVertex;
 		}
+
+		std::swap(outputPolygon, clipPolygon);
+		outputPolygon.clear();
 	}
 }
+
 
 void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, const Vec3& ptOnB, IntersectionManifold& manifold)
 {
@@ -85,11 +128,14 @@ void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, c
 	std::vector<Vec3> closestFaceA = shapeA->FindClosestFaceByNormal(normal, bodyA->GetCenterOfMassWorldSpace(), bodyA->GetOrientation(), closestFaceANormal, closestFaceAIdx);
 	std::vector<Vec3> closestFaceB = shapeB->FindClosestFaceByNormal(normal * -1, bodyB->GetCenterOfMassWorldSpace(), bodyB->GetOrientation(), closestFaceBNormal, closestFaceBIdx);
 
-	float edgeNormalDistance = Abs((edgeA[0] - edgeA[1]).Cross(edgeB[0] - edgeB[1]).Dot(normal));
-	float closestFaceANormalDistance = closestFaceANormal.Dot(normal);
-	float closestFaceBNormalDistance = closestFaceBNormal.Dot(normal);
+	Vec3 edgeNormal = (edgeA[0] - edgeA[1]).Cross(edgeB[0] - edgeB[1]);
+	edgeNormal.Normalize();
 
-	if (edgeNormalDistance > closestFaceANormalDistance && edgeNormalDistance > closestFaceBNormalDistance)
+	float edgeNormalDistance = Abs(edgeNormal.Dot(normal));
+	float closestFaceANormalDistance = Abs(closestFaceANormal.Dot(normal));
+	float closestFaceBNormalDistance = Abs(closestFaceBNormal.Dot(normal));
+
+	if (edgeNormalDistance > closestFaceANormalDistance && edgeNormalDistance > closestFaceBNormalDistance && Max(closestFaceANormalDistance, closestFaceBNormalDistance) < 0.96)
 	{
 		Vec3 l1, l2;
 		float m, n;
@@ -104,11 +150,66 @@ void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, c
 		contact.ptOnA_LocalSpace = bodyA->WorldSpacePointToLocalSpace(l1);
 		contact.ptOnB_LocalSpace = bodyB->WorldSpacePointToLocalSpace(l2);
 		contact.normal = normal;
+
+		contact.separationDistance = (l2 - l1).Dot(normal);
+		contact.timeOfImpact = 0.0f;
+		
+		manifold.contacts[0] = contact;
 	}
-	// 使用 sutherland_hodgman 算法计算求交后的
+	// 使用 sutherland_hodgman 算法计算求交后的 manifold
 	else
 	{
+		bool isFaceAReference = closestFaceANormalDistance > closestFaceBNormalDistance;
 
+		std::vector<Vec4> clippingPlanes;
+		std::vector<Vec3> clippedPolygon;
+		if(isFaceAReference)
+		{
+			BuildClippingPlanes(closestFaceA, closestFaceANormal, clippingPlanes);
+			SutherlandHodgmanClip(clippingPlanes, closestFaceB, clippedPolygon);
+		}
+		else
+		{
+			BuildClippingPlanes(closestFaceB, closestFaceBNormal, clippingPlanes);
+			SutherlandHodgmanClip(clippingPlanes, closestFaceA, clippedPolygon);
+		}
+		
+		manifold.contactCount = Min(manifold.maxContactCount, (int)clippedPolygon.size());
+		for(int i = 0; i < manifold.contactCount; i++)
+		{
+			contact_t contact;
+			contact.bodyA = const_cast<Body*>(bodyA);
+			contact.bodyB = const_cast<Body*>(bodyB);
+
+			if(isFaceAReference)
+			{
+				// 将裁剪后的多边形顶点投影到多边形表面
+				Vec3 clippedPtOnA = closestFaceANormal * (clippingPlanes[0].w - clippedPolygon[i].Dot(closestFaceANormal))
+					+ clippedPolygon[i];
+				
+				contact.ptOnA_WorldSpace = clippedPtOnA;
+				contact.ptOnB_WorldSpace = clippedPolygon[i];
+			}
+			else
+			{
+				// 将裁剪后的多边形顶点投影到多边形表面
+				Vec3 clippedPtOnB = closestFaceBNormal * (clippingPlanes[0].w - clippedPolygon[i].Dot(closestFaceBNormal))
+					+ clippedPolygon[i];
+				
+				contact.ptOnA_WorldSpace = clippedPolygon[i];
+				contact.ptOnB_WorldSpace = clippedPtOnB;
+			}
+
+			
+			contact.separationDistance = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dot(normal);
+			contact.timeOfImpact = 0.0f;
+
+			contact.ptOnA_LocalSpace = bodyA->WorldSpacePointToLocalSpace(contact.ptOnA_WorldSpace);
+			contact.ptOnB_LocalSpace = bodyB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
+			
+			contact.normal = normal;
+			manifold.contacts[i] = contact;
+		}
 	}
 
 
@@ -188,27 +289,6 @@ void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDiffer
 		// 将新点加入待构建的队列中
 		points.push_back(newPt);
 		
-		/*
-		// 将旧三角形从凸包中移除，构建新的三角形
-		triangles.erase(triangles.begin() + closestTriangleIdx);
-
-		int newPointIdx = points.size() - 1;
-		int triangleIdx[3] = { closestTriangle.a, closestTriangle.b, closestTriangle.c };
-		for (int i = 0; i < 3; i++)
-		{
-			int j = (i + 1) % 3;
-
-			ConvexTriangles tri{ newPointIdx, triangleIdx[i], triangleIdx[j] };
-
-			if (DistanceFromTriangle(points[tri.a].pt, points[tri.b].pt, points[tri.c].pt, Vec3(0, 0, 0)) > 0)
-			{
-				std::swap(tri.b, tri.c);
-			}
-
-			triangles.push_back(tri);
-		}
-		*/
-
 		// 从凸包中移除面向新点的三角形
 		RemovePointFacingTriangle(newPt.pt);
 		// 用新点填充新三角形

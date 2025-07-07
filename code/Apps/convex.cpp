@@ -16,21 +16,24 @@ public:
 			5.0f, 0.1f, Vec3(2.0f, 2.0f, 2.0f), 1.0f
 		);
 		
+		/*
 		builder->AddBox(
 			Vec3(21.9f, 7.9f, 2.1f), Quat(0.0, 0, 0.0, 1),
 			10.0f, 1.0f, Vec3(2.0f, 2.0f, 2.0f), 1.0f
 		);
+		*/
 		
 		builder->AddBox(
 			Vec3(20, 0, -6.0f), Quat(0, 0, 0, 1),
 			Body::InfinityMass, 0.3f, Vec3(10.0f, 10.0f, 10.0f), 1.0f
 		);
 
+		/*
 		builder->AddSphere(
 			Vec3(21.9f, 1.9f, 7.1f), Quat(0.0, 0, 0.0, 1),
 			10.0f, 1.0f, 1.5f, 1.0f
 		);
-		
+		*/
 	}
 
 	virtual void UpdateScene(float dt_sec) override
@@ -65,7 +68,7 @@ public:
 	{
 		for (int i = 0;i < m_scene->GetBodies().size(); i++)
 		{
-			m_scene->GetBodies()[i]->SetEnableGravity(false);
+			// m_scene->GetBodies()[i]->SetEnableGravity(false);
 		}
 
 	}
