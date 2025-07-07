@@ -24,7 +24,7 @@ public:
 	static Mat4 Left( const Quat & q );
 	static Mat4 Right( const Quat & q );
 
-	void SetBodies(Body* bodyA, Vec3 anchorA, Vec3 axisA, Body* bodyB, Vec3 anchorB, Vec3 axisB);
+	virtual void SetBodies(Body* bodyA, Vec3 anchorA, Vec3 axisA, Body* bodyB, Vec3 anchorB, Vec3 axisB);
 
 protected:
 	MatMN GetInverseMassMatrix() const;

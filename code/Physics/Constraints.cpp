@@ -12,6 +12,7 @@ Constraint::GetInverseMassMatrix
 MatMN Constraint::GetInverseMassMatrix() const
 {
 	MatMN invMassMatrix(12, 12);
+	invMassMatrix.Zero();
 
 	// TODO: Add code
 	Mat3 invTensorA = m_bodyA->GetInertialTensorWorldSpace();
@@ -31,9 +32,9 @@ MatMN Constraint::GetInverseMassMatrix() const
 		}
 	}
 
+	invMassMatrix[6][6] = massB;
 	invMassMatrix[7][7] = massB;
 	invMassMatrix[8][8] = massB;
-	invMassMatrix[9][9] = massB;
 
 
 	for (int y = 0; y < 3; y++)

@@ -9,6 +9,7 @@
 #include "Physics/Shapes/ShapeFactory.h"
 #include <algorithm>
 
+Vec3 g_global_gravity = Vec3(0, 0, -10.0f);
 
 Scene::~Scene() 
 {
@@ -44,6 +45,8 @@ void Scene::Update(const float dt_sec) {
 	// TODO: Add code
 	int frameContactCount = 0;
 
+	// printf("body gravity\n");
+
 	// 计算冲量
 	for (auto& body : m_bodies)
 	{
@@ -53,10 +56,11 @@ void Scene::Update(const float dt_sec) {
 		}
 		float mass = body->GetMass();
 
-		Vec3 gravityImpulse = m_gravity * mass * dt_sec;
+		Vec3 gravityImpulse = g_global_gravity * mass * dt_sec;
 		body->ApplyImpulse(gravityImpulse);
 	}
 
+	// printf("board phase\n");
 
 	// 碰撞检测 broadPhase
 	std::vector<collisionPair_t> pairs;
@@ -71,37 +75,68 @@ void Scene::Update(const float dt_sec) {
 		if ((bodyI->HasInfintyMass() && bodyJ->HasInfintyMass()))
 			continue;
 
-		contact_t contact;
+		IntersectionManifold manifold;
 
-		if (Intersect(bodyI, bodyJ, dt_sec, contact))
+		if (Intersect(bodyI, bodyJ, dt_sec, manifold))
 		{
-			m_contactBuffer[frameContactCount++] = contact;// ResolveContact(contact);
+			for (int i = 0; i < manifold.contactCount; i++)
+			{
+				m_contactBuffer[frameContactCount++] = manifold.contacts[i];// ResolveContact(contact);
+			}
 		}
 	}
 
+	/*
+	// 对于toi等于0的接触点，生成对应的penertration constraint
+	int framePenertrationConstaints = 0;
+	// 对于toi大于0的接触点，解算CCD
+	int frameCCDContactCount = 0;
+
+	for (int i = 0;i < frameContactCount; i++)
+	{
+		if (m_contactBuffer[i].timeOfImpact == 0.0f)
+		{
+			// TODO 更好的分配策略
+			ConstraintPenetration* constraint = new ConstraintPenetration();
+			constraint->SetBodies(m_contactBuffer[i].bodyA,
+				m_contactBuffer[i].ptOnA_LocalSpace,
+				m_contactBuffer[i].normal,
+				m_contactBuffer[i].bodyB,
+				m_contactBuffer[i].ptOnB_LocalSpace,
+				m_contactBuffer[i].normal);
+
+			constraint->SetNormal(m_contactBuffer[i].normal * -1.0f);
+
+			float friction = m_contactBuffer[i].bodyA->GetFriction()* m_contactBuffer[i].bodyB->GetFriction();
+
+			constraint->SetFriction(friction);
+			m_constraints.push_back(constraint);
+			framePenertrationConstaints++;
+		}
+		else
+		{
+			std::swap(m_contactBuffer[frameCCDContactCount++], m_contactBuffer[i]);
+		}
+	}
+	*/
+
+
+	// printf("contact sorting\n");
+
 	// 按 time of impact对所有contact排序
-	std::sort(m_contactBuffer.begin(), m_contactBuffer.begin() + frameContactCount, 
+	std::sort(m_contactBuffer.begin(), m_contactBuffer.begin() + frameContactCount,
 		[](const contact_t& a, const contact_t& b) 
 		{
 			return a.timeOfImpact < b.timeOfImpact;
 		}
 	);
 
-	/*
-	for (auto& constraint : m_constraints)
-	{
-		constraint->PreSolve(dt_sec);
-	}
-	for (auto& constraint : m_constraints)
-	{
-		constraint->Solve();
-	}
-	*/
 
+	// printf("ccd solving\n");
 	// 按时间顺序依次处理接触点
 	float accumlatedTime = 0.0;
 	// 按time of impact处理contact
-	for (int i = 0;i < frameContactCount;i++)
+	for (int i = 0;i <frameContactCount;i++)
 	{
 		contact_t contact = m_contactBuffer[i];
 		float dt = contact.timeOfImpact - accumlatedTime;
@@ -123,12 +158,47 @@ void Scene::Update(const float dt_sec) {
 		accumlatedTime += dt;
 	}
 
-	float remainingTime = dt_sec - accumlatedTime;
+
+
+	// printf("compute constraints\n");
+	// 计算约束
+	for (auto& constraint : m_constraints)
+	{
+		constraint->PreSolve(dt_sec);
+	}
+	for (int iter = 0; iter < 10; iter++)
+	{
+		for (auto& constraint : m_constraints)
+		{
+			constraint->Solve();
+		}
+	}
+	for (auto& constraint : m_constraints)
+	{
+		constraint->PostSolve();
+	}
+
+	/*
+	printf("clear constraints\n");
+	// 清理掉临时的约束
+	for (int i = m_constraints.size() - framePenertrationConstaints;i < m_constraints.size();i++)
+	{
+		delete m_constraints[i];
+	}
+	m_constraints.erase(m_constraints.end() - framePenertrationConstaints, m_constraints.end());
+	*/
+ 	float remainingTime = dt_sec - accumlatedTime;
 	// 计算速度
 	for (auto& body : m_bodies)
 	{
 		body->UpdatePosition(remainingTime);
 	}
+}
+
+void Scene::UpdateXPBD(const float dt_sec)
+{
+
+
 }
 
 SceneState Scene::GetCurrentState()
@@ -160,7 +230,7 @@ SceneBuilder::SceneBuilder(Scene* scene)
 	m_constraints = &scene->m_constraints;
 }
 
-void SceneBuilder::AddSphere(Vec3 position, Quat orientation, float mass, float elasity, float radius, float friction)
+int SceneBuilder::AddSphere(Vec3 position, Quat orientation, float mass, float elasity, float radius, float friction)
 {
 	Command command;
 	command.position = position;
@@ -174,9 +244,11 @@ void SceneBuilder::AddSphere(Vec3 position, Quat orientation, float mass, float 
 	m_commands.push_back(command);
 
 	ExecuteCommand(command);
+
+	return m_bodies->size() - 1;
 }
 
-void SceneBuilder::AddPlane(Vec3 position, Quat orientation, float mass, float elasity, float width, float height, float friction)
+int SceneBuilder::AddPlane(Vec3 position, Quat orientation, float mass, float elasity, float width, float height, float friction)
 {
 	Command command;
 	command.position = position;
@@ -192,11 +264,12 @@ void SceneBuilder::AddPlane(Vec3 position, Quat orientation, float mass, float e
 
 	ExecuteCommand(command);
 
+	return m_bodies->size() - 1;
 }
 
 
 
-void SceneBuilder::AddBox(Vec3 position, Quat orientation, float mass,
+int SceneBuilder::AddBox(Vec3 position, Quat orientation, float mass,
 	float elasity, Vec3 extent, float friction)
 {
 	Command command;
@@ -212,9 +285,11 @@ void SceneBuilder::AddBox(Vec3 position, Quat orientation, float mass,
 	m_commands.push_back(command);
 
 	ExecuteCommand(command);
+
+	return m_bodies->size() - 1;
 }
 
-void SceneBuilder::AddConvex(Vec3 position, Quat orientation, float mass,
+int SceneBuilder::AddConvex(Vec3 position, Quat orientation, float mass,
 	float elasity, const Vec3* pts, int numPt, float friction)
 {
 	Command command;
@@ -228,22 +303,29 @@ void SceneBuilder::AddConvex(Vec3 position, Quat orientation, float mass,
 	command.convex.pts = std::vector<Vec3>(pts, pts + numPt);
 
 	m_commands.push_back(command);
+
+	ExecuteCommand(command);
+
+	return m_bodies->size() - 1;
 }
 
-void SceneBuilder::AddDistanceConstrain(Body* bodyA, Vec3 anchorA, Vec3 axisA,
-	Body* bodyB, Vec3 anchorB, Vec3 axisB)
+int SceneBuilder::AddDistanceConstrain(int bodyIndexA, Vec3 anchorA, int bodyIndexB, Vec3 anchorB)
 {
 	Command command;
-	command.bodyA = bodyA;
-	command.bodyB = bodyB;
-	command.axisA = axisA;
-	command.axisB = axisB;
+	command.bodyIndexA = bodyIndexA;
+	command.bodyIndexB = bodyIndexB;
+	command.axisA = Vec3(1, 0, 0);
+	command.axisB = Vec3(1, 0, 0);
 	command.anchorA = anchorA;
 	command.anchorB = anchorB;
 	command.type = Command::ECommandType::DistanceConstraint;
 
 	m_commands.push_back(command);
-}
+
+	ExecuteCommand(command);
+
+	return m_constraints->size() - 1;
+ }
 
 void SceneBuilder::Reset()
 {
@@ -350,9 +432,11 @@ void SceneBuilder::ExecuteCommand(const Command& command)
 
 		DistanceConstraint->SetBodies
 		(
-			command.bodyA, command.anchorA, command.axisA,
-			command.bodyB, command.anchorB, command.axisB
+			(*m_bodies)[command.bodyIndexA], command.anchorA, command.axisA,
+			(*m_bodies)[command.bodyIndexB], command.anchorB, command.axisB
 		);
+
+		m_constraints->push_back(DistanceConstraint);
 		break;
 	}
 	default:

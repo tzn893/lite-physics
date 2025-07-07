@@ -98,4 +98,20 @@ float DistanceFromTriangle(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2, co
 
 Vec3 TriangleNormal(const Vec3& pt0, const Vec3& pt1, const Vec3& pt2);
 
+Vec2 SignedVolume(Vec3 pt0, Vec3 pt1);
+Vec3 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2);
+Vec4 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2, Vec3 pt3);
 
+// 将点pt投影到线/面/体上
+inline Vec2 SignedVolumePt(Vec3 pt0, Vec3 pt1, Vec3 pt)
+{
+	return SignedVolume(pt0 - pt, pt1 - pt);
+}
+inline Vec3 SignedVolumePt(Vec3 pt0, Vec3 pt1, Vec3 pt2, Vec3 pt)
+{
+	return SignedVolume(pt0 - pt, pt1 - pt, pt2 - pt);
+}
+inline Vec4 SignedVolumePt(Vec3 pt0, Vec3 pt1, Vec3 pt2, Vec3 pt3, Vec3 pt)
+{
+	return SignedVolume(pt0 - pt, pt1 - pt, pt2 - pt, pt3 - pt);
+}

@@ -20,8 +20,13 @@ public:
 	void PreSolve( const float dt_sec ) override;
 	void Solve() override;
 
+	void SetNormal(Vec3 normal);
+	void SetFriction(float friction);
+
+
+private:
 	VecN m_cachedLambda;
-	Vec3 m_normal;		// in Body A's local space
+	Vec3 m_normal;		// in world space
 
 	MatMN m_Jacobian;
 

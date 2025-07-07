@@ -3,13 +3,14 @@
 //
 #pragma once
 #include "ShapeBase.h"
+#include "ShapeConvex.h"
 
 /*
 ====================================================
 ShapeBox
 ====================================================
 */
-class ShapeBox : public Shape {
+class ShapeBox : public ShapeConvexBase {
 public:
 	explicit ShapeBox( const Vec3 * pts, const int num ) {
 		Build( pts, num );
@@ -37,7 +38,19 @@ public:
 	// 对于不可使用SAT测试的物体返回-1
 	virtual int GetSeperateAxis(std::vector<Vec3>& outAxis);
 
-public:
+	// 根据顶点索引获取凸包顶点世界空间坐标
+	virtual Vec3 GetConvexVertex(int idx, Vec3 positionWS, Quat oriWS) override;
+
+	// 找到世界空间下距离法线方向最近的面
+	virtual std::vector<Vec3> FindClosestFaceByNormal(Vec3 normalWS, Vec3 positionWS, Quat oriWS, Vec3& normal, int& faceIdx) override;
+	// 找到世界空间下距离法线方向最近的边
+	virtual std::vector<Vec3> FindClosestEdgeByContact(Vec3 contactWS, Vec3 positionWS, Quat oriWS) override;
+
+	virtual FaceAdjFaces FindAdjFaces(int faceIdx) override;
+
+	virtual void GetFaceInfo(int faceIdx, Vec3 positionWS, Quat oriWS, Vec3& normal, Vec3& origin) override;
+
+private:
 	
 	Vec3   m_pts[8];
 	Bounds m_bounds;

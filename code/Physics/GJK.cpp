@@ -2,6 +2,7 @@
 //  GJK.cpp
 //
 #include "GJK.h"
+#include "Intersections.h"
 #include "Math/Helpers.h"
 #include <tuple>
 
@@ -11,194 +12,108 @@ using opt = std::optional <T>;
 template<typename ...Args>
 using tpl = std::tuple<Args...>;
 
-// Signed Volume算法，将点pt投影到pt0以及pt1构成的线段上
-Vec2 SignedVolume(Vec3 pt0, Vec3 pt1)
+// 来自https://github.com/felipeek/raw-physics/blob/master/src/physics/clipping.cpp
+bool CollisionDistanceBetweenSkewLines(Vec3 p1, Vec3 d1, Vec3 p2, Vec3 d2, Vec3& l1, Vec3& l2, float& _n, float& _m) 
 {
-	Vec3 pt0pt1 = pt1 - pt0;
-	Vec3 pt0pt = Vec3(0.0) - pt0;
+	float n1 = d1.x * d2.x + d1.y * d2.y + d1.z * d2.z;
+	float n2 = d2.x * d2.x + d2.y * d2.y + d2.z * d2.z;
+	float m1 = -d1.x * d1.x - d1.y * d1.y - d1.z * d1.z;
+	float m2 = -d2.x * d1.x - d2.y * d1.y - d2.z * d1.z;
+	float r1 = -d1.x * p2.x + d1.x * p1.x - d1.y * p2.y + d1.y * p1.y - d1.z * p2.z + d1.z * p1.z;
+	float r2 = -d2.x * p2.x + d2.x * p1.x - d2.y * p2.y + d2.y * p1.y - d2.z * p2.z + d2.z * p1.z;
 
-	// 投影到线段上的点pt
-	Vec3 projPt = pt0 + pt0pt1 * (pt0pt1.Dot(pt0pt)) / pt0pt1.GetLengthSqr();
-
-	int maxAxis = 0;
-	float muMax = 0;
-	for (int i = 0;i < 3; i++)
-	{
-		int mu = pt1[i] - pt0[i];
-		if (mu * mu > muMax * muMax)
-		{
-			muMax = mu;
-			maxAxis = i;
-		}
+	// Solve 2x2 linear system
+	if ((n1 * m2) - (n2 * m1) == 0) {
+		return false;
 	}
+	float n = ((r1 * m2) - (r2 * m1)) / ((n1 * m2) - (n2 * m1));
+	float m = ((n1 * r2) - (n2 * r1)) / ((n1 * m2) - (n2 * m1));
 
-	float a = pt0[maxAxis];
-	float b = pt1[maxAxis];
-	float c = projPt[maxAxis];
+	l1 = p1 + d1 * m;
+	l2 = p2 + d2 * n;
+	_n = n;
+	_m = m;
 
-	if ((a < c && c < b) || (a > c && c > b))
-	{
-		Vec2 rv = Vec2(b - c, c - a);
-		return rv / (b - a);
-	}
-	else if((a < b && c < a) || (a > b && c > a))
-	{
-		return Vec2(1.0f, 0.0f);
-	}
-
-	return Vec2(0.0f, 1.0f);
-}
-
-// Signed Volume算法，将点pt投影到pt0,pt1以及pt2构成的三角形上
-Vec3 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2)
-{
-	Vec3 normal = (pt1 - pt0).Cross(pt2 - pt0);
-	normal.Normalize();
-	Vec3 projPt = normal * normal.Dot(pt0);
-
-	// 找到投影面积最大的面
-	int maxAxis = 0;
-	float areaMax = 0;
-	for (int i = 0;i < 3;i++)
-	{
-		int j = (i + 1) % 3;
-		int k = (i + 2) % 3;
-		Vec2 a = Vec2(pt0[j], pt0[k]);
-		Vec2 b = Vec2(pt1[j], pt1[k]);
-		Vec2 c = Vec2(pt2[j], pt2[k]);
-
-		Vec2 ab = b - a;
-		Vec2 ac = c - a;
-
-		float area = ab.x * ac.y - ab.y * ac.x;
-		if (area * area > areaMax * areaMax)
-		{
-			maxAxis = i;
-			areaMax = area;
-		}
-
-	}
-
-	// 将点投影到对应轴上
-	int j = (maxAxis + 1) % 3;
-	int k = (maxAxis + 2) % 3;
-	Vec2 s[3];
-	s[0] = Vec2(pt0[j], pt0[k]);
-	s[1] = Vec2(pt1[j], pt1[k]);
-	s[2] = Vec2(pt2[j], pt2[k]);
-	Vec2 p = Vec2(projPt[j], projPt[k]);
-
-	// 并计算三个子三角形的面积
-	Vec3 areas;
-	for (int i = 0;i < 3; i++)
-	{
-		int j = (i + 1) % 3;
-		int k = (i + 2) % 3;
-
-		Vec2 a = p;
-		Vec2 b = s[j];
-		Vec2 c = s[k];
-		Vec2 ab = b - a;
-		Vec2 ac = c - a;
-
-		areas[i] = ab.x * ac.y - ab.y * ac.x;
-	}
-
-	// 如果投影点在三角形内部，则返回重心坐标
-	int sign = Sign(areaMax);
-	if (sign == Sign(areas[0]) && sign == Sign(areas[1]) && sign == Sign(areas[2]))
-	{
-		return areas / areaMax;
-	}
-
-	// 若投影点在三角形外，则将点投影到三条边上，找到最近点
-	float dist = 1e10f;
-	Vec3 rv = Vec3(1, 0, 0);
-	
-	Vec3 edgePts[3];
-	edgePts[0] = pt0;
-	edgePts[1] = pt1;
-	edgePts[2] = pt2;
-	
-	for (int i = 0; i < 3; i++)
-	{
-		int k = (i + 1) % 3;
-		int j = (i + 2) % 3;
-
-		Vec2 lambdaEdge = SignedVolume(edgePts[k], edgePts[j]);
-		Vec3 pt = edgePts[k] * lambdaEdge[0] + edgePts[j] * lambdaEdge[1];
-		if (pt.GetLengthSqr() < dist)
-		{
-			dist = pt.GetLengthSqr();
-			rv[i] = 0;
-			rv[k] = lambdaEdge[0];
-			rv[j] = lambdaEdge[1];
-		}
-	}
-
-	return rv;
+	return true;
 }
 
 
-
-// Signed Volume算法，检查点pt距离三棱锥最近的点
-Vec4 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2, Vec3 pt3)
+void SutherlandHodgmanClip(const std::vector<Vec3>& subjectPolygon, const std::vector<Vec3>& clipPolygon, std::vector<Vec3>& outputPolygon)
 {
-	// 计算四个子四棱柱的体积
-	Mat4 mat;
-	mat.rows[0] = Vec4(pt0[0], pt1[0], pt2[0], pt3[0]);
-	mat.rows[1] = Vec4(pt0[1], pt1[1], pt2[1], pt3[1]);
-	mat.rows[2] = Vec4(pt0[2], pt1[2], pt2[2], pt3[2]);
-	mat.rows[3] = Vec4(		1,		1,		1,		1);
-
-	Vec4 volumes;
-	volumes[0] = mat.Cofactor(3, 0);
-	volumes[1] = mat.Cofactor(3, 1);
-	volumes[2] = mat.Cofactor(3, 2);
-	volumes[3] = mat.Cofactor(3, 3);
-
-	// 计算总体积
-	float totalVolume = volumes[0] + volumes[1] + volumes[2] + volumes[3];
-	int totalVolumeSign = Sign(totalVolume);
-
-	// 若点在内部则返回内部坐标
-	if (totalVolumeSign == Sign(volumes[0]) && totalVolumeSign == Sign(volumes[1])
-		&& totalVolumeSign == Sign(volumes[2]) && totalVolumeSign == Sign(volumes[3]))
+	outputPolygon = std::vector<Vec3>();
+	for (size_t i = 0; i < clipPolygon.size(); ++i)
 	{
-		return volumes / totalVolume;
-	}
-
-	Vec3 facePts[4];
-	facePts[0] = pt0;
-	facePts[1] = pt1;
-	facePts[2] = pt2;
-	facePts[3] = pt3;
-
-	// 否则计算各个点在面元上的投影
-	Vec4 lambdas;
-	float dist = 1e10f;
-	for (int i = 0; i < 4; i++)
-	{
-		int j = (i + 1) % 4;
-		int k = (i + 2) % 4;
-		int l = (i + 3) % 4;
-
-		Vec3 lambdaThe = SignedVolume(facePts[i], facePts[j], facePts[k]);
-		Vec3 p = facePts[i] * lambdaThe[0] + facePts[j] * lambdaThe[1] 
-			+ facePts[k] * lambdaThe[2];
-
-		if (p.GetLengthSqr() < dist)
+		const Vec3& clipEdgeStart = clipPolygon[i];
+		const Vec3& clipEdgeEnd = clipPolygon[(i + 1) % clipPolygon.size()];
+		std::vector<Vec3> inputPolygon = outputPolygon;
+		outputPolygon.clear();
+		Vec3 prevVertex = inputPolygon.back();
+		for (const Vec3& currentVertex : inputPolygon)
 		{
-			dist = p.GetLengthSqr();
-			lambdas[i] = lambdaThe[0];
-			lambdas[j] = lambdaThe[1];
-			lambdas[k] = lambdaThe[2];
-			lambdas[l] = 0;
+			if (IsInside(currentVertex, clipEdgeStart, clipEdgeEnd))
+			{
+				if (!IsInside(prevVertex, clipEdgeStart, clipEdgeEnd))
+				{
+					outputPolygon.push_back(Intersect(prevVertex, currentVertex, clipEdgeStart, clipEdgeEnd));
+				}
+				outputPolygon.push_back(currentVertex);
+			}
+			else if (IsInside(prevVertex, clipEdgeStart, clipEdgeEnd))
+			{
+				outputPolygon.push_back(Intersect(prevVertex, currentVertex, clipEdgeStart, clipEdgeEnd));
+			}
+			prevVertex = currentVertex;
 		}
 	}
-
-	return lambdas;
 }
+
+void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, const Vec3& ptOnB, IntersectionManifold& manifold)
+{
+	Vec3 normal = (ptOnB - ptOnA).Dir() * -1;
+
+	ShapeConvexBase* shapeA = dynamic_cast<ShapeConvexBase*>(bodyA->GetShape());
+	ShapeConvexBase* shapeB = dynamic_cast<ShapeConvexBase*>(bodyB->GetShape()); 
+
+	// 只有凸包才能使用GJK算法计算manifold
+	assert(shapeA && shapeB);
+
+	std::vector<Vec3> edgeA = shapeA->FindClosestEdgeByContact(ptOnA, bodyA->GetCenterOfMassWorldSpace(), bodyA->GetOrientation());
+	std::vector<Vec3> edgeB = shapeB->FindClosestEdgeByContact(ptOnB, bodyB->GetCenterOfMassWorldSpace(), bodyB->GetOrientation());
+
+	Vec3 closestFaceANormal, closestFaceBNormal;
+	int  closestFaceAIdx, closestFaceBIdx;
+	std::vector<Vec3> closestFaceA = shapeA->FindClosestFaceByNormal(normal, bodyA->GetCenterOfMassWorldSpace(), bodyA->GetOrientation(), closestFaceANormal, closestFaceAIdx);
+	std::vector<Vec3> closestFaceB = shapeB->FindClosestFaceByNormal(normal * -1, bodyB->GetCenterOfMassWorldSpace(), bodyB->GetOrientation(), closestFaceBNormal, closestFaceBIdx);
+
+	float edgeNormalDistance = Abs((edgeA[0] - edgeA[1]).Cross(edgeB[0] - edgeB[1]).Dot(normal));
+	float closestFaceANormalDistance = closestFaceANormal.Dot(normal);
+	float closestFaceBNormalDistance = closestFaceBNormal.Dot(normal);
+
+	if (edgeNormalDistance > closestFaceANormalDistance && edgeNormalDistance > closestFaceBNormalDistance)
+	{
+		Vec3 l1, l2;
+		float m, n;
+
+		assert(CollisionDistanceBetweenSkewLines(edgeA[0], edgeA[1] - edgeA[0], edgeB[0], edgeB[1] - edgeB[0], l1, l2, m, n));
+		manifold.contactCount = 1;
+		contact_t contact;
+		contact.bodyA = const_cast<Body*>(bodyA);
+		contact.bodyB = const_cast<Body*>(bodyB);
+		contact.ptOnA_WorldSpace = l1;
+		contact.ptOnB_WorldSpace = l2;
+		contact.ptOnA_LocalSpace = bodyA->WorldSpacePointToLocalSpace(l1);
+		contact.ptOnB_LocalSpace = bodyB->WorldSpacePointToLocalSpace(l2);
+		contact.normal = normal;
+	}
+	// 使用 sutherland_hodgman 算法计算求交后的
+	else
+	{
+
+	}
+
+
+}
+
 /*
 ================================
 GJK_DoesIntersect

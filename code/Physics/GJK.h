@@ -85,10 +85,12 @@ private:
 };
 
 
+
 bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB );
 bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB, const float bias, Vec3 & ptOnA, Vec3 & ptOnB);
 void GJK_ClosestPoints( const Body * bodyA, const Body * bodyB, Vec3 & ptOnA, Vec3 & ptOnB);
 
-Vec2 SignedVolume(Vec3 pt0, Vec3 pt1);
-Vec3 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2);
-Vec4 SignedVolume(Vec3 pt0, Vec3 pt1, Vec3 pt2, Vec3 pt3);
+// 根据碰撞结果，计算两个物体接触面
+void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, const Vec3& ptOnB,
+	struct IntersectionManifold& manifold);
+

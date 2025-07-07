@@ -148,3 +148,133 @@ int ShapeBox::GetSeperateAxis(std::vector<Vec3>& outAxis)
 
 	return 3;
 }
+
+Vec3 ShapeBox::GetConvexVertex(int idx, Vec3 positionWS, Quat oriWS)
+{
+	return positionWS + oriWS.RotatePoint(m_pts[idx]);
+}
+
+std::vector<Vec3> ShapeBox::FindClosestFaceByNormal(Vec3 normalWS, Vec3 positionWS, Quat oriWS, Vec3& normal, int& faceIdx)
+{
+	static Vec3 normals[6] =
+	{
+		Vec3( 1, 0, 0),
+		Vec3(-1, 0, 0),
+		Vec3( 0, 1, 0),
+		Vec3( 0,-1, 0),
+		Vec3( 0, 0, 1),
+		Vec3( 0, 0,-1)
+	};
+
+	static int faces[6][4] =
+	{
+		{1, 3, 7, 5},
+		{0, 4, 6, 2},
+		{6, 7, 3, 2},
+		{0, 1, 5, 4},
+		{4, 5, 7, 6},
+		{0, 2, 3, 1}
+	};
+
+	float closestDistance = -1.0f;
+	int closestAxisIdx = 0;
+	for (int i = 0;i < 6; i++)
+	{
+		Vec3 currentNormal = oriWS.RotatePoint(normals[i]);
+		float distance = currentNormal.Dot(normalWS);
+		if (distance > closestDistance)
+		{
+			faceIdx = i;
+			normal = currentNormal;
+			closestAxisIdx = i;
+			closestDistance = distance;
+		}
+	}
+
+	std::vector<Vec3> closestFace;
+	for (int i = 0;i < 4;i++)
+	{
+		closestFace.push_back(GetConvexVertex(faces[closestAxisIdx][i], positionWS, oriWS));
+	}
+
+	return closestFace;
+}
+
+std::vector<Vec3> ShapeBox::FindClosestEdgeByContact(Vec3 contactWS, Vec3 positionWS, Quat oriWS)
+{
+	static int edges[12][2] =
+	{
+		{0, 1}, {1, 3}, {3, 2}, {2, 0}, {1, 5}, {3, 7},
+		{2, 6}, {4, 0}, {4, 5}, {5, 7}, {7, 6}, {6, 4}
+	};
+
+	float closestDistance = std::numeric_limits<float>::max();
+	std::vector<Vec3> closestEdge;
+	for (int i = 0; i < 12; i++)
+	{
+		Vec3 p0 = GetConvexVertex(edges[i][0], positionWS, oriWS);
+		Vec3 p1 = GetConvexVertex(edges[i][1], positionWS, oriWS);
+
+		Vec2 lambda = SignedVolumePt(p0, p1, contactWS);
+
+		float distance = ((p0 * lambda.x + p1 * lambda.y) - contactWS).GetLengthSqr();
+
+		if (distance < closestDistance)
+		{
+			closestDistance = distance;
+			closestEdge.clear();
+			closestEdge.push_back(p0);
+			closestEdge.push_back(p1);
+		}
+	}
+
+	return closestEdge;
+}
+
+FaceAdjFaces ShapeBox::FindAdjFaces(int faceIdx)
+{
+	static int adjFaces[6][4] =
+	{
+		{2,3,4,5},
+		{2,3,4,5},
+		{0,1,4,5},
+		{0,1,4,5},
+		{0,1,2,3},
+		{0,1,2,3}
+	};
+
+	FaceAdjFaces adj;
+	for (int i = 0; i < 4; i++)
+	{
+		adj.faceIndex[i] = adjFaces[faceIdx][i];
+	}
+	adj.faceAdjCount = 4;
+
+	return adj;
+}
+
+void ShapeBox::GetFaceInfo(int faceIdx, Vec3 positionWS, Quat oriWS, Vec3& normal, Vec3& origin)
+{
+	static Vec3 normals[6] =
+	{
+		Vec3(1, 0, 0),
+		Vec3(-1, 0, 0),
+		Vec3(0, 1, 0),
+		Vec3(0,-1, 0),
+		Vec3(0, 0, 1),
+		Vec3(0, 0,-1)
+	};
+
+	static int faces[6][4] =
+	{
+		{1, 3, 7, 5},
+		{0, 4, 6, 2},
+		{6, 7, 3, 2},
+		{0, 1, 5, 4},
+		{4, 5, 7, 6},
+		{0, 2, 3, 1}
+	};
+
+	normal = oriWS.RotatePoint(normals[faceIdx]);
+	origin = positionWS + oriWS.RotatePoint(m_pts[faces[faceIdx][0]]);
+}

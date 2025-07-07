@@ -571,11 +571,21 @@ public:
 		return rows[m];
 	}
 
+	void Print();
+
 public:
 	int		M;	// M rows
 	int		N;	// N columns
 	VecN *	rows;
 };
+
+inline void MatMN::Print()
+{
+	for (int i = 0;i < M; i++)
+	{
+		rows[i].Print();
+	}
+}
 
 inline MatMN::MatMN( int _M, int _N ) {
 	M = _M;

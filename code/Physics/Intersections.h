@@ -4,5 +4,19 @@
 #pragma once
 #include "Contact.h"
 
-bool Intersect( Body * bodyA, Body * bodyB, contact_t & contact );
-bool Intersect( Body * bodyA, Body * bodyB, const float dt, contact_t & contact );
+struct IntersectionManifold
+{
+	static constexpr int maxContactCount = 8;
+	int contactCount;
+
+	contact_t contacts[maxContactCount];
+
+	IntersectionManifold();
+	IntersectionManifold(const IntersectionManifold& rhs);
+
+	bool HasIntersection();
+};
+
+
+bool Intersect( Body * bodyA, Body * bodyB, IntersectionManifold& manifold );
+bool Intersect( Body * bodyA, Body * bodyB, const float dt, IntersectionManifold& manifold);

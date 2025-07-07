@@ -13,8 +13,12 @@
 
 
 // 对于两个box，使用SAT进行碰撞检测
-void BoxBoxIntersect(Body* boxA, Body* boxB, contact_t& contact)
+void BoxBoxIntersect(Body* boxA, Body* boxB, IntersectionManifold& manifold)
 {
+	// TODO 重构GJK，将其返回值设置为manifold
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
+
 	contact.bodyA = boxA;
 	contact.bodyB = boxB;
 
@@ -27,7 +31,7 @@ void BoxBoxIntersect(Body* boxA, Body* boxB, contact_t& contact)
 }
 
 // 对于球体和方形的碰撞检测
-void SphereBoxIntersect(Body* sphereA, Body* boxB, contact_t& contact)
+void SphereBoxIntersect(Body* sphereA, Body* boxB, IntersectionManifold& manifold)
 {
 	assert(sphereA->GetShape()->GetType() == EShape::SHAPE_SPHERE &&
 		boxB->GetShape()->GetType() == EShape::SHAPE_BOX);
@@ -90,6 +94,8 @@ void SphereBoxIntersect(Body* sphereA, Body* boxB, contact_t& contact)
 		intersect = (sphereCenter - closestPointOnBox).GetLengthSqr() < sphereRadius * sphereRadius;
 	}
 
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
 
 	contact.ptOnB_WorldSpace = boxOrient.RotatePoint(closestPointOnBox) + boxCenter;
 	contact.ptOnB_LocalSpace = boxB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
@@ -105,13 +111,13 @@ void SphereBoxIntersect(Body* sphereA, Body* boxB, contact_t& contact)
 	contact.timeOfImpact = 0.0f;
 }
 
-void BoxSphereIntersect(Body* boxA, Body* sphereB, contact_t& contact)
+void BoxSphereIntersect(Body* boxA, Body* sphereB, IntersectionManifold& contact)
 {
 	SphereBoxIntersect(sphereB, boxA, contact);
 }
 
 
-void PlanePlaneIntersect(Body* planeA, Body* planeB, contact_t& contact)
+void PlanePlaneIntersect(Body* planeA, Body* planeB, IntersectionManifold& contact)
 {
 	// TODO
 	assert(false);
@@ -119,7 +125,7 @@ void PlanePlaneIntersect(Body* planeA, Body* planeB, contact_t& contact)
 
 
 
-void SpherePlaneIntersect(Body* sphereA, Body* planeB, contact_t& contact)
+void SpherePlaneIntersect(Body* sphereA, Body* planeB, IntersectionManifold& manifold)
 {
 	assert(sphereA->GetShape()->GetType() == Shape::SHAPE_SPHERE &&
 		planeB->GetShape()->GetType() == Shape::SHAPE_PLANE);
@@ -138,6 +144,9 @@ void SpherePlaneIntersect(Body* sphereA, Body* planeB, contact_t& contact)
 	float dist = Abs(offset) / Sqrt(planeNormal.Dot(planeNormal));
 
 	// 无限大的平面
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
+
 	contact.bodyA = sphereA;
 	contact.bodyB = planeB;
 
@@ -177,12 +186,12 @@ void SpherePlaneIntersect(Body* sphereA, Body* planeB, contact_t& contact)
 	contact.separationDistance = fixedDist - shapeAShape->GetRadius();
 }
 
-void PlaneShapeIntersect(Body* planeB, Body* sphereA, contact_t& contact)
+void PlaneShapeIntersect(Body* planeB, Body* sphereA, IntersectionManifold& manifold)
 {
-	SpherePlaneIntersect(sphereA, planeB, contact);
+	SpherePlaneIntersect(sphereA, planeB, manifold);
 }
 
-void SphereSphereIntersect(Body* sphereA, Body* sphereB, contact_t& contact)
+void SphereSphereIntersect(Body* sphereA, Body* sphereB, IntersectionManifold& manifold)
 {
 
 	assert(sphereA->GetShape()->GetType() == Shape::SHAPE_SPHERE &&
@@ -199,6 +208,8 @@ void SphereSphereIntersect(Body* sphereA, Body* sphereB, contact_t& contact)
 	// return dist.Dot(dist) < (shapeA->m_radius + shapeB->m_radius) * (shapeA->m_radius + shapeB->m_radius);
 
 	// TODO: Add Code
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
 
 	contact.bodyA = sphereA;
 	contact.bodyB = sphereB;
@@ -215,12 +226,15 @@ void SphereSphereIntersect(Body* sphereA, Body* sphereB, contact_t& contact)
 }
 
 // 对于任意形状，使用GJK算法做碰撞检测
-void GeneralIntersect(Body* bodyA, Body* bodyB, contact_t& contact)
+void GeneralIntersect(Body* bodyA, Body* bodyB, IntersectionManifold& manifold)
 {
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
+
 	bool hasIntersection = GJK_DoesIntersect(bodyA, bodyB, 1e-4f, contact.ptOnA_WorldSpace, contact.ptOnB_WorldSpace);
 	contact.bodyA = bodyA;
 	contact.bodyB = bodyB;
-	contact.normal = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dir();
+	contact.normal = (contact.ptOnB_WorldSpace - contact.ptOnA_WorldSpace).Dir() * -1;
 	contact.ptOnA_LocalSpace = bodyA->WorldSpacePointToLocalSpace(contact.ptOnA_WorldSpace);
 	contact.ptOnB_LocalSpace = bodyB->WorldSpacePointToLocalSpace(contact.ptOnB_WorldSpace);
 
@@ -230,7 +244,7 @@ void GeneralIntersect(Body* bodyA, Body* bodyB, contact_t& contact)
 	contact.timeOfImpact = 0;
 }
 
-using IntersectionFunc = std::function<void(Body* bodyA, Body* bodyB, contact_t& contact)>;
+using IntersectionFunc = std::function<void(Body* bodyA, Body* bodyB, IntersectionManifold& contact)>;
 
 
 struct IntersectionFunctionTableItem
@@ -269,7 +283,7 @@ IntersectionFunc FindIntersectionFunction(Body* bodyA, Body* bodyB)
 	return GeneralIntersect;
 }
 
-using CCDSolver = std::function<void(Body* bodyA, Body* bodyB, contact_t& contact, float dt)>;
+using CCDSolver = std::function<void(Body* bodyA, Body* bodyB, IntersectionManifold& manifold, float dt)>;
 
 struct CCDSolverTableItem
 {
@@ -288,28 +302,27 @@ float GetThickness(Body* bodyA, Vec3 dir)
 	return t1 - t0;
 }
 
-void GeneralCCDSolver(Body* bodyA, Body* bodyB, contact_t& contact, IntersectionFunc intersectionFunc, float dt)
+void GeneralCCDSolver(Body* bodyA, Body* bodyB, IntersectionManifold& manifold, IntersectionFunc intersectionFunc, float dt)
 {
 	 // TODO 目前还未实现通用的CCD
 	assert(false);
 }
 
 
-void SpherePlaneCCDSolver(Body* sphereA, Body* planeB, contact_t& contact, float dt)
+void SpherePlaneCCDSolver(Body* sphereA, Body* planeB, IntersectionManifold& manifold, float dt)
 {
 	// TODO 目前直接对球体和平面做相交测试，不进行任何CCD计算
-	SpherePlaneIntersect(sphereA, planeB, contact);
+	SpherePlaneIntersect(sphereA, planeB, manifold);
 }
 
-void PlaneSphereCCDSolver(Body* planeA, Body* sphereB, contact_t& contact, float dt)
+void PlaneSphereCCDSolver(Body* planeA, Body* sphereB, IntersectionManifold& manifold, float dt)
 {
-	SpherePlaneCCDSolver(sphereB, planeA, contact, dt);
+	SpherePlaneCCDSolver(sphereB, planeA, manifold, dt);
 }
 
-void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, contact_t& contact, float dt)
+void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, IntersectionManifold& manifold, float dt)
 {
-	contact.bodyA = sphereA;
-	contact.bodyB = sphereB;
+	
 
 	// TODO
 	ShapeSphere* sphereAShape = static_cast<ShapeSphere*>(sphereA->GetShape());
@@ -328,9 +341,15 @@ void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, contact_t& contact, flo
 	// 如果相对速度小于最小的隧穿速度，则不需要进行CCD
 	if (relativeVel.Dot(relativeVel) < minCCDVel * minCCDVel)
 	{
-		SphereSphereIntersect(sphereA, sphereB, contact);
+		SphereSphereIntersect(sphereA, sphereB, manifold);
 		return;
 	}
+
+	manifold.contactCount = 1;
+	contact_t& contact = manifold.contacts[0];
+
+	contact.bodyA = sphereA;
+	contact.bodyB = sphereB;
 
 	// 做球体射线检测，判断两球相交时间
 	float t0, t1;
@@ -370,7 +389,7 @@ void SphereSphereCCDSolver(Body* sphereA, Body* sphereB, contact_t& contact, flo
 		}
 	}
 
-	SphereSphereIntersect(sphereA, sphereB, contact);
+	SphereSphereIntersect(sphereA, sphereB, manifold);
 }
 
 
@@ -400,9 +419,9 @@ CCDSolver FindCCDSolver(Body* bodyA, Body* bodyB)
 
 	if (IntersectionFunc func = FindIntersectionFunction(bodyA, bodyB); func != nullptr)
 	{
-		return [func](Body* bodyA, Body* bodyB, contact_t& contact, float dt)
+		return [func](Body* bodyA, Body* bodyB, IntersectionManifold& manifold, float dt)
 		{
-				GeneralCCDSolver(bodyA, bodyB, contact, func, dt);
+				GeneralCCDSolver(bodyA, bodyB, manifold, func, dt);
 		};
 	}
 
@@ -415,7 +434,7 @@ CCDSolver FindCCDSolver(Body* bodyA, Body* bodyB)
 Intersect
 ====================================================
 */
-bool Intersect( Body * bodyA, Body * bodyB, contact_t & contact ) 
+bool Intersect( Body * bodyA, Body * bodyB, IntersectionManifold& manifold ) 
 {
 	bool useCCD = bodyA->CCDEnabled() || bodyB->CCDEnabled();
 
@@ -423,11 +442,11 @@ bool Intersect( Body * bodyA, Body * bodyB, contact_t & contact )
 	{
 		if (IntersectionFunc func = FindIntersectionFunction(bodyA, bodyB); func != nullptr)
 		{
-			func(bodyA, bodyB, contact);
+			func(bodyA, bodyB, manifold);
 		}
 	}
 	
-	return contact.HasIntersection();
+	return manifold.HasIntersection();
 }
 
 /*
@@ -435,7 +454,7 @@ bool Intersect( Body * bodyA, Body * bodyB, contact_t & contact )
 Intersect
 ====================================================
 */
-bool Intersect( Body * bodyA, Body * bodyB, const float dt, contact_t & contact) {
+bool Intersect( Body * bodyA, Body * bodyB, const float dt, IntersectionManifold& manifold) {
 	// TODO: Add Code
 	bool useCCD = bodyA->CCDEnabled() || bodyB->CCDEnabled();
 
@@ -443,16 +462,40 @@ bool Intersect( Body * bodyA, Body * bodyB, const float dt, contact_t & contact)
 	{
 		if (IntersectionFunc func = FindIntersectionFunction(bodyA, bodyB); func != nullptr)
 		{
-			func(bodyA, bodyB, contact);
+			func(bodyA, bodyB, manifold);
 		}
 	}
 	else
 	{
 		if (CCDSolver solver = FindCCDSolver(bodyA, bodyB); solver != nullptr)
 		{
-			solver(bodyA, bodyB, contact, dt);
+			solver(bodyA, bodyB, manifold, dt);
 		}
 	}
 
-	return contact.HasIntersection();
+	return manifold.HasIntersection();
+}
+
+IntersectionManifold::IntersectionManifold()
+{
+	contactCount = 0;
+	for (int i = 0; i < maxContactCount; i++)
+	{
+		contacts[i].timeOfImpact = 0.0f;
+		contacts[i].separationDistance = 0.0f;
+	}
+}
+
+IntersectionManifold::IntersectionManifold(const IntersectionManifold& rhs)
+{
+	contactCount = rhs.contactCount;
+	for (int i = 0; i < maxContactCount; i++)
+	{
+		contacts[i] = rhs.contacts[i];
+	}
+}
+
+bool IntersectionManifold::HasIntersection()
+{
+	return contactCount > 1 || (contactCount == 1 && contacts[0].HasIntersection());
 }

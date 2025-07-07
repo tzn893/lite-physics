@@ -4,6 +4,7 @@
 #include "ShapeConvex.h"
 #include "Math/Helpers.h"
 #include <functional>
+#include <unordered_map>
 
 /*
 ========================================================================================================
@@ -38,10 +39,10 @@ and then return true if it's unique
 ================================
 */
 bool IsEdgeUnique(
-	const std::vector<tri_t>& tris,
+	const std::vector<ConvexTriangle>& tris,
 	const std::vector<int>& facingTris,
 	const int ignoreTri,
-	const edge_t& edge
+	const ConvexEdge& edge
 ) {
 	for (int i = 0; i < facingTris.size(); i++) {
 		const int triIdx = facingTris[i];
@@ -49,8 +50,8 @@ bool IsEdgeUnique(
 			continue;
 		}
 
-		const tri_t& tri = tris[triIdx];
-		edge_t edges[3];
+		const ConvexTriangle& tri = tris[triIdx];
+		ConvexEdge edges[3];
 
 		edges[0].a = tri.a;
 		edges[0].b = tri.b;
@@ -77,7 +78,7 @@ AddPoint
 */
 void AddPoint(
 	std::vector<Vec3>& hullPoints,
-	std::vector<tri_t>& hullTris,
+	std::vector<ConvexTriangle>& hullTris,
 	const Vec3& pt
 ) {
 	// This point is outside
@@ -85,7 +86,7 @@ void AddPoint(
 	// Find all the triangles that face this point
 	std::vector<int> facingTris;
 	for (int i = (int)hullTris.size() - 1; i >= 0; i--) {
-		const tri_t& tri = hullTris[i];
+		const ConvexTriangle& tri = hullTris[i];
 		const Vec3& a = hullPoints[tri.a];
 		const Vec3& b = hullPoints[tri.b];
 		const Vec3& c = hullPoints[tri.c];
@@ -97,11 +98,11 @@ void AddPoint(
 
 	// Now find all edges that are unique to the tris,
 	// these will be the edges that form the new triangles
-	std::vector<edge_t> uniqueEdges;
+	std::vector<ConvexEdge> uniqueEdges;
 	for (int i = 0; i < facingTris.size(); i++) {
 		const int triIdx = facingTris[i];
-		const tri_t& tri = hullTris[triIdx];
-		edge_t edges[3];
+		const ConvexTriangle& tri = hullTris[triIdx];
+		ConvexEdge edges[3];
 
 		edges[0].a = tri.a;
 		edges[0].b = tri.b;
@@ -128,8 +129,8 @@ void AddPoint(
 
 	// Now add triangles for each unique edge
 	for (int i = 0; i < uniqueEdges.size(); i++) {
-		const edge_t& edge = uniqueEdges[i];
-		tri_t tri;
+		const ConvexEdge& edge = uniqueEdges[i];
+		ConvexTriangle tri;
 		tri.a = edge.a;
 		tri.b = edge.b;
 		tri.c = newPtIdx;
@@ -143,13 +144,13 @@ void AddPoint(
 RemoveUnreferencedVerts
 ================================
 */
-void RemoveUnreferencedVerts(std::vector<Vec3>& hullPoints, std::vector<tri_t>& hullTris) {
+void RemoveUnreferencedVerts(std::vector<Vec3>& hullPoints, std::vector<ConvexTriangle>& hullTris) {
 	for (int i = 0; i < hullPoints.size(); i++) {
 		bool isUsed = false;
 
 		// Check if the point is used in any triangle
 		for (int j = 0; j < hullTris.size(); j++) {
-			const tri_t& tri = hullTris[j];
+			const ConvexTriangle& tri = hullTris[j];
 			if (tri.a == i || tri.b == i || tri.c == i) {
 				isUsed = true;
 				break;
@@ -162,7 +163,7 @@ void RemoveUnreferencedVerts(std::vector<Vec3>& hullPoints, std::vector<tri_t>& 
 
 		// Adjust triangle indices greater than i
 		for (int j = 0; j < hullTris.size(); j++) {
-			tri_t& tri = hullTris[j];
+			ConvexTriangle& tri = hullTris[j];
 			if (tri.a > i) tri.a--;
 			if (tri.b > i) tri.b--;
 			if (tri.c > i) tri.c--;
@@ -181,7 +182,7 @@ RemoveInternalPoints
 */
 void RemoveInternalPoints(
 	const std::vector<Vec3>& hullPoints,
-	const std::vector<tri_t>& hullTris,
+	const std::vector<ConvexTriangle>& hullTris,
 	std::vector<Vec3>& checkPts
 ) {
 	// 移除位于当前凸包内部的点
@@ -190,7 +191,7 @@ void RemoveInternalPoints(
 		bool isExternal = false;
 
 		for (int t = 0; t < hullTris.size(); t++) {
-			const tri_t& tri = hullTris[t];
+			const ConvexTriangle& tri = hullTris[t];
 			const Vec3& a = hullPoints[tri.a];
 			const Vec3& b = hullPoints[tri.b];
 			const Vec3& c = hullPoints[tri.c];
@@ -239,7 +240,7 @@ ExpandConvexHull
 */
 void ExpandConvexHull(
 	std::vector<Vec3>& hullPoints,
-	std::vector<tri_t>& hullTris,
+	std::vector<ConvexTriangle>& hullTris,
 	const std::vector<Vec3>& verts
 ) {
 	// 按以下步骤扩展四面体，构造凸包
@@ -274,7 +275,44 @@ void ExpandConvexHull(
 }
 
 
-void BuildConvexHull( const std::vector< Vec3 > & verts, std::vector< Vec3 > & hullPts, std::vector< tri_t > & hullTris ) 
+
+
+void FindConvexEdgesAndAdj(const std::vector<ConvexTriangle>& hullTris, std::vector<ConvexEdge>& hullEdges, std::vector<FaceAdjFaces>& hullAdjFaces)
+{
+	hullAdjFaces.resize(hullTris.size(), FaceAdjFaces{});
+	std::unordered_map<ConvexEdge, int> edges;
+	for (int faceIdx = 0; faceIdx < hullTris.size(); faceIdx++);
+	{
+		ConvexTriangle tri = hullTris[faceIdx];
+		ConvexEdge triangleEdges[3] = { ConvexEdge(tri.a, tri.b) , ConvexEdge(tri.b, tri.c) , ConvexEdge(tri.c, tri.a) };
+		for (int i = 0; i < 3; i++)
+		{
+			auto edgePos = edges.find(triangleEdges[i]);
+			if (edgePos != edges.end())
+			{
+				FaceAdjFaces& face1 = hullAdjFaces[edgePos->second];
+				FaceAdjFaces& face2 = hullAdjFaces[faceIdx];
+
+				face1.faceIndex[face1.faceAdjCount] = faceIdx;
+				face1.faceAdjCount++;
+
+				face2.faceIndex[face2.faceAdjCount] = edgePos->second;
+				face2.faceAdjCount++;
+			}
+			else
+			{
+				edges[triangleEdges[i]] = faceIdx;
+			}
+		}
+	}
+
+	for (auto& edge : edges)
+	{
+		hullEdges.push_back(edge.first);
+	}
+}
+
+void BuildConvexHull(const std::vector< Vec3 >& verts, std::vector< Vec3 >& hullPts, std::vector< ConvexTriangle >& hullTris, std::vector<ConvexEdge>& hullEdges, std::vector<FaceAdjFaces>& hullAdjFaces)
 {
 	// 构建四面体作为初始条件
 	// 1.找到最远两个点
@@ -326,12 +364,13 @@ void BuildConvexHull( const std::vector< Vec3 > & verts, std::vector< Vec3 > & h
 	hullPts.push_back(pt1);
 	hullPts.push_back(pt2);
 	hullPts.push_back(pt3);
-	hullTris.push_back(tri_t{ 0, 1, 2 });
-	hullTris.push_back(tri_t{ 0, 2, 3 });
-	hullTris.push_back(tri_t{ 2, 1, 3 });
-	hullTris.push_back(tri_t{ 1, 0, 3 });
+	hullTris.push_back(ConvexTriangle{ 0, 1, 2 });
+	hullTris.push_back(ConvexTriangle{ 0, 2, 3 });
+	hullTris.push_back(ConvexTriangle{ 2, 1, 3 });
+	hullTris.push_back(ConvexTriangle{ 1, 0, 3 });
 
 	ExpandConvexHull(hullPts, hullTris, verts);
+	FindConvexEdgesAndAdj(hullTris, hullEdges, hullAdjFaces);
 }
 
 /*
@@ -339,12 +378,11 @@ void BuildConvexHull( const std::vector< Vec3 > & verts, std::vector< Vec3 > & h
 ShapeConvex::Build
 ====================================================
 */
+
 void ShapeConvex::Build( const Vec3 * pts, const int num ) {
 	// TODO: Add code
-	std::vector<tri_t> hullTris;
-
 	std::vector<Vec3> verts(pts, pts + num);
-	BuildConvexHull(verts, m_points, hullTris);
+	BuildConvexHull(verts, m_points, m_triangles, m_edges, m_adjFaces);
 
 	// 计算凸包质心
 	for (int i = 0;i < num; i++)
@@ -444,4 +482,99 @@ float ShapeConvex::FastestLinearSpeed( const Vec3 & angularVelocity, const Vec3 
 std::optional<PointArrayAccessor> ShapeConvex::GetPointData()
 {
 	return PointArrayAccessor(m_points);
+}
+
+Vec3 ShapeConvex::GetConvexVertex(int idx, Vec3 positionWS, Quat oriWS)
+{
+	assert(idx < m_points.size() && idx >= 0);
+
+	return oriWS.RotatePoint(m_points[idx]) + positionWS;
+}
+
+std::vector<Vec3> ShapeConvex::FindClosestFaceByNormal(Vec3 normalWS, Vec3 positionWS, Quat oriWS, Vec3& normal, int& faceIdx)
+{
+	float closestDistance = -1.0f;
+	std::vector<Vec3> closestTriangle;
+	for (auto& tri : m_triangles)
+	{
+		Vec3 p0, p1, p2;
+		GetTransformedTriangleVertices(tri, positionWS, oriWS, p0, p1, p2);
+		Vec3 currentNormal = TriangleNormal(p0, p1, p2);
+
+		float distance = currentNormal.Dot(normalWS);
+		if (distance > closestDistance)
+		{
+			closestDistance = distance;
+			closestTriangle.clear();
+			closestTriangle.push_back(p0);
+			closestTriangle.push_back(p1);
+			closestTriangle.push_back(p2);
+			normal = currentNormal;
+		}
+	}
+
+	return closestTriangle;
+}
+
+std::vector<Vec3> ShapeConvex::FindClosestEdgeByContact(Vec3 contactWS, Vec3 positionWS, Quat oriWS)
+{
+	float closestDistance = std::numeric_limits<float>::max();
+	std::vector<Vec3> closestEdge;
+	for (auto& edge : m_edges)
+	{
+		Vec3 p0, p1;
+		GetTransformedEdgeVertices(edge, positionWS, oriWS, p0, p1);
+		Vec2 lambda = SignedVolumePt(p0, p1, contactWS);
+
+		float distance = ((p0 * lambda.x + p1 * lambda.y) - contactWS).GetLengthSqr();
+
+		if (distance < closestDistance)
+		{
+			closestDistance = distance;
+			closestEdge.clear();
+			closestEdge.push_back(p0);
+			closestEdge.push_back(p1);
+		}
+	}
+
+	return closestEdge;
+}
+
+void ShapeConvex::GetTransformedTriangleVertices(ConvexTriangle tri, Vec3 positionWS, Quat oriWS, Vec3& p0, Vec3& p1, Vec3& p2)
+{
+	p0 = positionWS + oriWS.RotatePoint(m_points[tri.a]);
+	p1 = positionWS + oriWS.RotatePoint(m_points[tri.b]);
+	p2 = positionWS + oriWS.RotatePoint(m_points[tri.c]);
+}
+
+void ShapeConvex::GetTransformedEdgeVertices(ConvexEdge edge, Vec3 positionWS, Quat oriWS, Vec3& p0, Vec3& p1)
+{
+	p0 = positionWS + oriWS.RotatePoint(m_points[edge.a]);
+	p1 = positionWS + oriWS.RotatePoint(m_points[edge.b]);
+}
+
+ConvexEdge::ConvexEdge(int a, int b)
+{
+	if (a > b) std::swap(a, b);
+	this->a = a;
+	this->b = b;
+}
+
+
+const std::vector<Vec3>& ShapeConvex::GetVertices() const
+{
+	return m_points;
+}
+
+FaceAdjFaces ShapeConvex::FindAdjFaces(int faceIdx)
+{
+	return m_adjFaces[faceIdx];
+}
+
+void ShapeConvex::GetFaceInfo(int faceIdx, Vec3 positionWS, Quat oriWS, Vec3& normal, Vec3& origin)
+{
+	Vec3 p0, p1, p2;
+	GetTransformedTriangleVertices(m_triangles[faceIdx], positionWS, oriWS, p0, p1, p2);
+	normal = TriangleNormal(p0, p1, p2);
+	origin = (p0 + p1 + p2) / 3.0f;
 }

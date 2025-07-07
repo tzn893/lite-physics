@@ -24,20 +24,19 @@ public:
 	SceneBuilder(class Scene* scene);
 	
 
-	void AddSphere(Vec3 position, Quat orientation, float mass, 
+	int AddSphere(Vec3 position, Quat orientation, float mass, 
 		float elasity, float radius, float friction);
 
-	void AddPlane(Vec3 position, Quat orientation, float mass,
+	int AddPlane(Vec3 position, Quat orientation, float mass,
 		float elasity, float width, float height, float friction);
 
-	void AddBox(Vec3 position ,Quat orientation, float mass,
+	int AddBox(Vec3 position ,Quat orientation, float mass,
 		float elasity, Vec3 extent, float friction);
 
-	void AddConvex(Vec3 position, Quat orientation, float mass,
+	int AddConvex(Vec3 position, Quat orientation, float mass,
 		float elasity, const Vec3* pts, int numPt, float friction);
 
-	void AddDistanceConstrain(Body* bodyA, Vec3 anchorA, Vec3 axisA, 
-		Body* bodyB, Vec3 anchorB, Vec3 axisB);
+	int AddDistanceConstrain(int bodyIndexA, Vec3 anchorA, int bodyIndexB, Vec3 anchorB);
 
 	void Reset();
 
@@ -82,10 +81,10 @@ private:
 			std::vector<Vec3> pts;
 		} convex;
 
-		Body* bodyA;
+		int bodyIndexA;
 		Vec3 anchorA;
 		Vec3 axisA;
-		Body* bodyB;
+		int bodyIndexB;
 		Vec3 anchorB;
 		Vec3 axisB;
 	};
@@ -115,6 +114,9 @@ public:
 	SceneBuilder* BuildScene();
 	void Update( const float dt_sec );
 
+	// 利用XPBD更新场景
+	void UpdateXPBD(const float dt_sec);
+
 	SceneState GetCurrentState();
 	void RestoreState(const SceneState& state);
 
@@ -131,7 +133,7 @@ private:
 
 	SceneBuilder* m_builder;
 
-	Vec3 m_gravity = Vec3(0, 0, -10.0f);
+	
 	std::vector<contact_t> m_contactBuffer;
 
 };
