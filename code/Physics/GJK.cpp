@@ -12,6 +12,23 @@ using opt = std::optional <T>;
 template<typename ...Args>
 using tpl = std::tuple<Args...>;
 
+
+/*
+bool ConvexContainsOrigin(std::vector<ConvexTriangle> triangles, std::vector<MkDifferencePoint> pts)
+{
+	for (int i = 0;i < triangles.size(); i++)
+	{
+		Vec3 a = pts[triangles[i].a].pt, b = pts[triangles[i].b].pt, c = pts[triangles[i].c].pt;
+
+		if (DistanceFromTriangle(a, b, c, Vec3(0, 0, 0)) > 0.0f)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+*/
+
 static void BuildClippingPlanes(const std::vector<Vec3>& planePts, const Vec3& planeNormal, std::vector<Vec4>& clippingPlanes)
 {
 	float planeDistance = planePts[0].Dot(planeNormal);
@@ -22,7 +39,14 @@ static void BuildClippingPlanes(const std::vector<Vec3>& planePts, const Vec3& p
 	{
 		Vec3 start = planePts[idx];
 		Vec3 end = planePts[(idx + 1) % planePts.size()];
+		Vec3 extra = planePts[(idx + 2) % planePts.size()];
+
 		Vec3 clippingPlaneNormal = planeNormal.Cross(end - start).Dir();
+		if ((extra - end).Dot(clippingPlaneNormal) > 0)
+		{
+			clippingPlaneNormal *= -1;
+		}
+
 		float clippingPlaneDistance = clippingPlaneNormal.Dot(start);
 		clippingPlanes.push_back(Vec4(clippingPlaneNormal.x, clippingPlaneNormal.y, clippingPlaneNormal.z,
 			clippingPlaneDistance));
@@ -42,7 +66,7 @@ static Vec3 FindIntersectionWithPlaneAndPoint(const Vec4& plane, const Vec3& sta
 {
 	Vec3 planeNormal = Vec3(plane.x, plane.y, plane.z);
 	float planeDistance = plane.w;
-	float t = (planeDistance - planeNormal.Dot(start)) / Max(planeNormal.Dot(end - start), 1e-8f);
+	float t = (planeDistance - planeNormal.Dot(start)) / planeNormal.Dot(end - start);
 	return start * (1 - t) + end * t;
 }
 
@@ -107,6 +131,8 @@ void SutherlandHodgmanClip(const std::vector<Vec4>& clippingPlanes, std::vector<
 		std::swap(outputPolygon, clipPolygon);
 		outputPolygon.clear();
 	}
+
+	outputPolygon = clipPolygon;
 }
 
 
@@ -118,7 +144,7 @@ void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, c
 	ShapeConvexBase* shapeB = dynamic_cast<ShapeConvexBase*>(bodyB->GetShape()); 
 
 	// 只有凸包才能使用GJK算法计算manifold
-	assert(shapeA && shapeB);
+	lite_physics_assert(shapeA && shapeB);
 
 	std::vector<Vec3> edgeA = shapeA->FindClosestEdgeByContact(ptOnA, bodyA->GetCenterOfMassWorldSpace(), bodyA->GetOrientation());
 	std::vector<Vec3> edgeB = shapeB->FindClosestEdgeByContact(ptOnB, bodyB->GetCenterOfMassWorldSpace(), bodyB->GetOrientation());
@@ -140,7 +166,7 @@ void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, c
 		Vec3 l1, l2;
 		float m, n;
 
-		assert(CollisionDistanceBetweenSkewLines(edgeA[0], edgeA[1] - edgeA[0], edgeB[0], edgeB[1] - edgeB[0], l1, l2, m, n));
+		lite_physics_assert(CollisionDistanceBetweenSkewLines(edgeA[0], edgeA[1] - edgeA[0], edgeB[0], edgeB[1] - edgeB[0], l1, l2, m, n));
 		manifold.contactCount = 1;
 		contact_t contact;
 		contact.bodyA = const_cast<Body*>(bodyA);
@@ -215,11 +241,350 @@ void ClippingManifold(const Body* bodyA, const Body* bodyB, const Vec3& ptOnA, c
 
 }
 
+//Kevin's implementation of the Gilbert-Johnson-Keerthi intersection algorithm
+//and the Expanding Polytope Algorithm
+#define GJK_MAX_NUM_ITERATIONS 64
+
+//Triangle case
+void update_simplex3(Vec3& a, Vec3& b, Vec3& c, Vec3& d, int& simp_dim, Vec3& search_dir) {
+	/* Required winding order:
+	//  b
+	//  | \
+	//  |   \
+	//  |    a
+	//  |   /
+	//  | /
+	//  c
+	*/
+	Vec3 n = (b - a).Cross(c - a); //triangle's normal
+	Vec3 AO = a * -1.0f; //direction to origin
+
+	//Determine which feature is closest to origin, make that the new simplex
+
+	simp_dim = 2;
+	if ((b - a).Cross(n).Dot(AO) > 0)
+	{ //Closest to edge AB
+		c = a;
+		//simp_dim = 2;
+		search_dir = (b - a).Cross(AO).Cross(b - a);
+		return;
+	}
+	if (n.Cross(c - a).Dot(AO) > 0)
+	{ //Closest to edge AC
+		b = a;
+		//simp_dim = 2;
+		search_dir = (c - a).Cross(AO).Cross(c - a);
+		return;
+	}
+
+	simp_dim = 3;
+	if (n.Dot(AO) > 0) { //Above triangle
+		d = c;
+		c = b;
+		b = a;
+		//simp_dim = 3;
+		search_dir = n;
+		return;
+	}
+	//else //Below triangle
+	d = b;
+	b = a;
+	//simp_dim = 3;
+	search_dir = n * -1.0f;
+	return;
+}
+
+
+//Tetrahedral case
+bool update_simplex4(Vec3& a, Vec3& b, Vec3& c, Vec3& d, int& simp_dim, Vec3& search_dir) {
+	// a is peak/tip of pyramid, BCD is the base (counterclockwise winding order)
+	//We know a priori that origin is above BCD and below a
+
+	//Get normals of three new faces
+	Vec3 ABC = (b - a).Cross(c - a);
+	Vec3 ACD = (c - a).Cross(d - a);
+	Vec3 ADB = (d - a).Cross(b - a);
+
+	Vec3 AO = a * -1.0f; //dir to origin
+	simp_dim = 3; //hoisting this just cause
+
+	//Plane-test origin with 3 faces
+	/*
+	// Note: Kind of primitive approach used here; If origin is in front of a face, just use it as the new simplex.
+	// We just go through the faces sequentially and exit at the first one which satisfies dot product. Not sure this
+	// is optimal or if edges should be considered as possible simplices? Thinking this through in my head I feel like
+	// this method is good enough. Makes no difference for AABBS, should test with more complex colliders.
+	*/
+	if (ABC.Dot(AO) > 0) { //In front of ABC
+		d = c;
+		c = b;
+		b = a;
+		search_dir = ABC;
+		return false;
+	}
+	if (ACD.Dot(AO) > 0) { //In front of ACD
+		b = a;
+		search_dir = ACD;
+		return false;
+	}
+	if (ADB.Dot(AO) > 0) { //In front of ADB
+		c = d;
+		d = b;
+		b = a;
+		search_dir = ADB;
+		return false;
+	}
+
+	//else inside tetrahedron; enclosed!
+	return true;
+
+	//Note: in the case where two of the faces have similar normals,
+	//The origin could conceivably be closest to an edge on the tetrahedron
+	//Right now I don't think it'll make a difference to limit our new simplices
+	//to just one of the faces, maybe test it later.
+}
+
+
+bool gjk(Body* coll1, Body* coll2, Vec3* mtv) {
+	Vec3 a, b, c, d; //Simplex: just a set of points (a is always most recently added)
+	Vec3 search_dir = coll1->GetBodyPositionWorldSpace() - coll2->GetBodyPositionWorldSpace(); //initial search direction between colliders
+
+	//Get initial point for simplex
+	c = coll2->GetSupportWorldSpace(search_dir, 0.0f) - coll1->GetSupportWorldSpace(search_dir * -1.0f, 0.0f);
+	search_dir = c * -1.0f; //search in direction of origin
+
+	//Get second point for a line segment simplex
+	b = coll2->GetSupportWorldSpace(search_dir, 0.0f) - coll1->GetSupportWorldSpace(search_dir * -1.0f, 0.0f);
+
+	if (b.Dot(search_dir) < 0) { return false; }//we didn't reach the origin, won't enclose it
+
+	search_dir = (c - b).Cross(b * -1.0f).Cross(c - b); //search perpendicular to line segment towards origin
+	if (search_dir == Vec3(0, 0, 0)) { //origin is on this line segment
+		//Apparently any normal search vector will do?
+		search_dir = (c - b).Cross(Vec3(1, 0, 0)); //normal with x-axis
+		if (search_dir == Vec3(0, 0, 0)) search_dir = c - b.Cross(Vec3(0, 0, -1)); //normal with z-axis
+	}
+	int simp_dim = 2; //simplex dimension
+
+	for (int iterations = 0; iterations < GJK_MAX_NUM_ITERATIONS; iterations++)
+	{
+		a = coll2->GetSupportWorldSpace(search_dir, 0.0f) - coll1->GetSupportWorldSpace(search_dir * -1.0f, 0.0f);
+		if (a.Dot(search_dir) < 0) { return false; }//we didn't reach the origin, won't enclose it
+
+		simp_dim++;
+		if (simp_dim == 3) {
+			update_simplex3(a, b, c, d, simp_dim, search_dir);
+		}
+		else if (update_simplex4(a, b, c, d, simp_dim, search_dir)) {
+			if (mtv) *mtv = EPA(a, b, c, d, coll1, coll2);
+			return true;
+		}
+	}//endfor
+	return false;
+}
+
+
+
+
+//Expanding Polytope Algorithm
+//Find minimum translation vector to resolve collision
+#define EPA_TOLERANCE 0.0001
+#define EPA_MAX_NUM_FACES 64
+#define EPA_MAX_NUM_LOOSE_EDGES 32
+#define EPA_MAX_NUM_ITERATIONS 64
+Vec3 EPA(Vec3 a, Vec3 b, Vec3 c, Vec3 d, Body* coll1, Body* coll2) {
+
+	struct Face
+	{
+		int idxs[3];
+		Vec3 normal;
+		std::vector<Vec3>* pts;
+
+		Face()
+		{
+			idxs[0] = 0, idxs[1] = 0, idxs[2] = 0;
+			pts = nullptr;
+		}
+
+		Face(int a, int b, int c, std::vector<Vec3>& pts)
+		{
+			idxs[0] = a, idxs[1] = b, idxs[2] = c;
+			normal = (pts[b] - pts[a]).Cross(pts[c] - pts[a]);
+			this->pts = &pts;
+		}
+
+		Vec3 operator[](int idx)
+		{
+			lite_physics_assert(idx < 3 && idx >= 0);
+			return (*pts)[idx];
+		}
+	};
+
+	struct Edge
+	{
+		int idxs[2];
+		std::vector<Vec3>* pts;
+		
+		Edge(int a, int b, std::vector<Vec3>& pts)
+		{
+			idxs[0] = a, idxs[1] = b;
+			this->pts = &pts;
+		}
+
+		Edge() 
+		{
+			idxs[0] = 0, idxs[1] = 0;
+			this->pts = nullptr;
+		}
+
+		Vec3 operator[](int idx)
+		{
+			lite_physics_assert(idx < 2 && idx >= 0);
+			return (*pts)[idx];
+		}
+
+		bool operator==(const Edge& other) const
+		{
+			return idxs[0] == other.idxs[0] && idxs[1] == other.idxs[1] && pts == other.pts;
+		}
+	};
+
+	Face faces[EPA_MAX_NUM_FACES]; //Array of faces, each with 3 verts and a normal
+	std::vector<Vec3> pts{a, b, c, d};
+
+
+	//Init with final simplex from GJK
+	/*
+	faces[0][0] = a;
+	faces[0][1] = b;
+	faces[0][2] = c;
+	faces[0][3] = (b - a).Cross(c - a).Dir(); //ABC
+	faces[1][0] = a;
+	faces[1][1] = c;
+	faces[1][2] = d;
+	faces[1][3] = (c - a).Cross(d - a).Dir(); //ACD
+	faces[2][0] = a;
+	faces[2][1] = d;
+	faces[2][2] = b;
+	faces[2][3] = (d - a).Cross(b - a).Dir(); //ADB
+	faces[3][0] = b;
+	faces[3][1] = d;
+	faces[3][2] = c;
+	faces[3][3] = (d - b).Cross(c - b).Dir(); //BDC
+	*/
+	faces[0] = Face(0, 1, 2, pts);
+	faces[1] = Face(0, 2, 3, pts);
+	faces[2] = Face(0, 3, 1, pts);
+	faces[3] = Face(1, 3, 2, pts);
+
+	int num_faces = 4;
+	int closest_face;
+
+	for (int iterations = 0; iterations < EPA_MAX_NUM_ITERATIONS; iterations++) {
+		//Find face that's closest to origin
+		float min_dist = (faces[0][0]).Dot(faces[0].normal);
+		closest_face = 0;
+		for (int i = 1; i < num_faces; i++) {
+			float dist = (faces[i][0]).Dot(faces[i].normal);
+			if (dist < min_dist) {
+				min_dist = dist;
+				closest_face = i;
+			}
+		}
+
+		//search normal to face that's closest to origin
+		Vec3 search_dir = faces[closest_face].normal;
+		Vec3 p = coll2->GetSupportWorldSpace(search_dir, 0.0f) - coll1->GetSupportWorldSpace(search_dir * -1.0f, 0.0f);
+
+		if (p.Dot(search_dir) - min_dist < EPA_TOLERANCE) {
+			//Convergence (new point is not significantly further from origin)
+			return faces[closest_face].normal * p.Dot(search_dir); //dot vertex with normal to resolve collision along normal!
+		}
+
+		Edge loose_edges[EPA_MAX_NUM_LOOSE_EDGES]; //keep track of edges we need to fix after removing faces
+		int num_loose_edges = 0;
+
+		//Find all triangles that are facing p
+		for (int i = 0; i < num_faces; i++)
+		{
+			if ((faces[i].normal).Dot(p - faces[i][0]) > 0) //triangle i faces p, remove it
+			{
+				//Add removed triangle's edges to loose edge list.
+				//If it's already there, remove it (both triangles it belonged to are gone)
+				for (int j = 0; j < 3; j++) //Three edges per face
+				{
+					Edge current_edge(faces[i].idxs[j], faces[i].idxs[(j + 1) % 3], pts);
+					bool found_edge = false;
+					for (int k = 0; k < num_loose_edges; k++) //Check if current edge is already in list
+					{
+						if (loose_edges[k] == current_edge) {
+							//Edge is already in the list, remove it
+							//THIS ASSUMES EDGE CAN ONLY BE SHARED BY 2 TRIANGLES (which should be true)
+							//THIS ALSO ASSUMES SHARED EDGE WILL BE REVERSED IN THE TRIANGLES (which 
+							//should be true provided every triangle is wound CCW)
+							std::swap(loose_edges[num_loose_edges - 1], loose_edges[k]); //with last edge in list
+							// loose_edges.erase(loose_edges.begin() + k);
+							num_loose_edges--;
+							found_edge = true;
+							break; //exit loop because edge can only be shared once
+						}
+					}//endfor loose_edges
+
+					if (!found_edge) { //add current edge to list
+						// assert(num_loose_edges<EPA_MAX_NUM_LOOSE_EDGES);
+						if (num_loose_edges >= EPA_MAX_NUM_LOOSE_EDGES) break;
+						loose_edges[num_loose_edges] = current_edge;
+						num_loose_edges++;
+					}
+				}
+
+				//Remove triangle i from list
+				faces[i][0] = faces[num_faces - 1][0];
+				faces[i][1] = faces[num_faces - 1][1];
+				faces[i][2] = faces[num_faces - 1][2];
+				faces[i][3] = faces[num_faces - 1][3];
+				num_faces--;
+				i--;
+			}//endif p can see triangle i
+		}//endfor num_faces
+
+		//Reconstruct polytope with p added
+		for (int i = 0; i < num_loose_edges; i++)
+		{
+			// assert(num_faces<EPA_MAX_NUM_FACES);
+			if (num_faces >= EPA_MAX_NUM_FACES) break;
+			faces[num_faces][0] = loose_edges[i][0];
+			faces[num_faces][1] = loose_edges[i][1];
+			faces[num_faces][2] = p;
+			faces[num_faces].normal = (loose_edges[i][0] - loose_edges[i][1]).Cross(loose_edges[i][0] - p);
+			
+			pts.push_back(p);
+
+			//Check for wrong normal to maintain CCW winding
+			float bias = 0.000001; //in case dot result is only slightly < 0 (because origin is on face)
+			if (faces[num_faces][0].Dot(faces[num_faces].normal) + bias < 0) {
+				/*
+				Vec3 temp = faces[num_faces][0];
+				faces[num_faces][0] = faces[num_faces][1];
+				faces[num_faces][1] = temp;
+				*/
+				std::swap(faces[num_faces].idxs[0], faces[num_faces].idxs[1]);
+				faces[num_faces].normal = faces[num_faces].normal * -1.0f;
+			}
+			num_faces++;
+		}
+	} //End for iterations
+	printf("EPA did not converge\n");
+	//Return most recent closest point
+	return faces[closest_face][3] * faces[closest_face][0].Dot(faces[closest_face][3]);
+}
+
+
 /*
 ================================
 GJK_DoesIntersect
 ================================
-*/
+
 void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDifferencePoint* simplexPts
 	, Vec3& ptOnA, Vec3& ptOnB)
 {
@@ -242,11 +607,11 @@ void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDiffer
 		int k = (i + 2) % 4;
 		int l = (i + 3) % 4;
 
-		ConvexTriangles tri{ i, j, k };
+		ConvexTriangle tri{ i, j, k };
 
 		// 三角形法线应当朝外，这意味着另一个点到三角形的距离必须小于0，因此若该距离大于0则需要调整三角形顶点顺序
 		if (DistanceFromTriangle(points[tri.a].pt, points[tri.b].pt, points[tri.c].pt,
-			points[l].pt) > 0)
+			Vec3(0, 0, 0)) > 0)
 		{
 			std::swap(tri.b, tri.c);
 		}
@@ -255,11 +620,14 @@ void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDiffer
 	}
 
 
+	// debug 用，检查当前构造的凸包是否合理
+	lite_physics_assert(ConvexContainsOrigin(triangles, points));
+
 	while (true)
 	{
 		// 找到当前距离原点最近的三角形，沿着其法线方向扩张
 		int closestTriangleIdx = FindClosestTriangle();
-		ConvexTriangles closestTriangle = triangles[closestTriangleIdx];
+		ConvexTriangle closestTriangle = triangles[closestTriangleIdx];
 
 		Vec3 closestTriangleNormal = TriangleNormal(points[closestTriangle.a].pt,
 			points[closestTriangle.b].pt, points[closestTriangle.c].pt);
@@ -293,6 +661,9 @@ void EPASolver::Solve(const Body* bodyA, const Body* bodyB, float bias, MkDiffer
 		RemovePointFacingTriangle(newPt.pt);
 		// 用新点填充新三角形
 		FillTrianglesWithNewPoint();
+
+		// debug 用，检查当前构造的凸包是否合理
+		lite_physics_assert(ConvexContainsOrigin(triangles, points));
 	}
 
 }
@@ -306,7 +677,7 @@ int EPASolver::FindClosestTriangle()
 
 	for (int idx = 0; idx < triangles.size(); idx++)
 	{
-		ConvexTriangles tri = triangles[idx];
+		ConvexTriangle tri = triangles[idx];
 
 		// 由于三角形法线方向与原点相反，因此距离一定小于0
 		float distance = ClosestPointDistanceFromTriangle(tri, Vec3(0, 0, 0));
@@ -321,7 +692,7 @@ int EPASolver::FindClosestTriangle()
 	return minIdx;
 }
 
-float EPASolver::ClosestPointDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt)
+float EPASolver::ClosestPointDistanceFromTriangle(const ConvexTriangle& tri, const Vec3& pt)
 {
 	Vec3 trianglePts[] =
 	{ points[tri.a].pt - pt, points[tri.b].pt - pt, points[tri.c].pt - pt};
@@ -332,7 +703,7 @@ float EPASolver::ClosestPointDistanceFromTriangle(const ConvexTriangles& tri, co
 	return closestPt.GetMagnitude();
 }
 
-float EPASolver::ProjectedSignedDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt)
+float EPASolver::ProjectedSignedDistanceFromTriangle(const ConvexTriangle& tri, const Vec3& pt)
 {
 	return DistanceFromTriangle(points[tri.a].pt, points[tri.b].pt, points[tri.c].pt, pt);
 }
@@ -354,7 +725,7 @@ void EPASolver::RemovePointFacingTriangle(const Vec3& pt)
 {
 	for (int idx = 0; idx < triangles.size();)
 	{
-		ConvexTriangles tri = triangles[idx];
+		ConvexTriangle tri = triangles[idx];
 		// 三角形不应该面向新加入的点
 		if (ProjectedSignedDistanceFromTriangle(tri, pt) >= 0)
 		{
@@ -414,7 +785,7 @@ void EPASolver::FillTrianglesWithNewPoint()
 	for (auto& edge : danglingEdges)
 	{
 		int lastPtIdx = points.size() - 1;
-		ConvexTriangles tri{ lastPtIdx, edge.a, edge.b };
+		ConvexTriangle tri{ lastPtIdx, edge.a, edge.b };
 		// 保证三角形的法线总是朝外
 		if (ProjectedSignedDistanceFromTriangle(tri, Vec3(0, 0, 0)) > 0)
 		{
@@ -431,7 +802,7 @@ void EPASolver::FillTrianglesWithNewPoint()
 // 当原点在simplex内部时，返回{是否包含原点，各个点的权重，投影后点的位置}
 tpl<bool, Vec4, Vec3> GeneralSignedVolume(int simplexCnt,const MkDifferencePoint* pts)
 {
-	assert(simplexCnt >= 2 && simplexCnt <= 4);
+	lite_physics_assert(simplexCnt >= 2 && simplexCnt <= 4);
 
 	Vec4 lambda;
 	bool inSide = false;
@@ -534,6 +905,8 @@ bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB )
 
 	return doseContainOrigin;
 }
+*/
+
 
 /*
 ================================
@@ -549,7 +922,7 @@ void GJK_ClosestPoints( const Body * bodyA, const Body * bodyB, Vec3 & ptOnA, Ve
 ================================
 GJK_DoesIntersect
 ================================
-*/
+
 bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB, const float bias, Vec3 & ptOnA, Vec3 & ptOnB ) 
 {
 	// TODO: Add code
@@ -645,9 +1018,10 @@ bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB, const float bias
 			if (normal.Dot(supportPts[0].pt) < 0.0f)
 			{
 				std::swap(supportPts[0], supportPts[1]);
+				normal *= -1;
 			}
 
-			MkDifferencePoint pt = MkDifferencePoint::Support(bodyA, bodyB, normal, bias);
+			MkDifferencePoint pt = MkDifferencePoint::Support(bodyA, bodyB, normal * -1, bias);
 			supportPts[simplexCnt++] = pt;
 		}
 
@@ -661,4 +1035,4 @@ bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB, const float bias
 	}
 
 	return doseContainOrigin;
-}
+}*/

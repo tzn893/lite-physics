@@ -267,12 +267,12 @@ void ShapeBox::GetFaceInfo(int faceIdx, Vec3 positionWS, Quat oriWS, Vec3& norma
 
 	static int faces[6][4] =
 	{
-		{1, 3, 7, 5},
-		{0, 4, 6, 2},
-		{6, 7, 3, 2},
-		{0, 1, 5, 4},
-		{4, 5, 7, 6},
-		{0, 2, 3, 1}
+		{1, 5, 7, 3},
+		{0, 2, 6, 4},
+		{6, 2, 3, 7},
+		{0, 4, 5, 1},
+		{4, 6, 7, 5},
+		{0, 1, 3, 2}
 	};
 
 	normal = oriWS.RotatePoint(normals[faceIdx]);

@@ -6,6 +6,13 @@
 #include "Vector.h"
 
 
+#ifdef _DEBUG
+#define lite_physics_assert(expr) if(!(expr)) { __debugbreak(); exit(-1); }
+#else
+#define lite_physics_assert(expr) assert(expr)
+#endif
+
+
 
 template<typename T>
 inline T Max(const T& x, const T& y)

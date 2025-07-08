@@ -20,7 +20,7 @@ struct contact_t {
 
 	bool HasIntersection()
 	{
-		return separationDistance < 0.0f || timeOfImpact > 0;
+		return separationDistance <= 0.0f || timeOfImpact > 0;
 	}
 
 };

@@ -66,6 +66,15 @@ void Scene::Update(const float dt_sec) {
 	std::vector<collisionPair_t> pairs;
 	BroadPhase(m_bodies, pairs, dt_sec);
 
+	struct PositionContactInfo
+	{
+		Body* a, * b;
+		Vec3 bodyA_WorldPos;
+		Vec3 bodyB_WorldPos;
+		Vec3 normal;
+	};
+	std::vector<PositionContactInfo> positionContactInfos;
+
 	// Åö×²¼ì²â narrowPhase
 	for (int i = 0;i < pairs.size();i++)
 	{
@@ -77,12 +86,22 @@ void Scene::Update(const float dt_sec) {
 
 		IntersectionManifold manifold;
 
+		
+
 		if (Intersect(bodyI, bodyJ, dt_sec, manifold))
 		{
+			contact_t deepestContact = manifold.contacts[0];
+
 			for (int i = 0; i < manifold.contactCount; i++)
 			{
 				m_contactBuffer[frameContactCount++] = manifold.contacts[i];// ResolveContact(contact);
+				if (deepestContact.separationDistance < manifold.contacts[i].separationDistance)
+				{
+					deepestContact = manifold.contacts[i];
+				}
 			}
+
+			positionContactInfos.push_back(PositionContactInfo{ deepestContact.bodyA, deepestContact.bodyB, deepestContact.ptOnA_WorldSpace, deepestContact.ptOnB_WorldSpace, deepestContact.normal });
 		}
 	}
 
@@ -127,6 +146,11 @@ void Scene::Update(const float dt_sec) {
 	std::sort(m_contactBuffer.begin(), m_contactBuffer.begin() + frameContactCount,
 		[](const contact_t& a, const contact_t& b) 
 		{
+			if (a.timeOfImpact == b.timeOfImpact)
+			{
+				return a.separationDistance < b.separationDistance;
+			}
+
 			return a.timeOfImpact < b.timeOfImpact;
 		}
 	);
@@ -158,6 +182,19 @@ void Scene::Update(const float dt_sec) {
 		accumlatedTime += dt;
 	}
 
+
+	
+	for (int i = 0;i < positionContactInfos.size();i++)
+	{
+		PositionContactInfo& contact = positionContactInfos[i];
+		Body* bodyA = contact.a;
+		Body* bodyB = contact.b;
+
+		Vec3 dist = contact.normal * (contact.bodyB_WorldPos - contact.bodyA_WorldPos).Dot(contact.normal);
+
+		bodyA->FixPosition(dist*  bodyA->GetInvMass() / (bodyA->GetInvMass() + bodyB->GetInvMass()));
+		bodyB->FixPosition(dist * -bodyB->GetInvMass() / (bodyA->GetInvMass() + bodyB->GetInvMass()));
+	}
 
 
 	// printf("compute constraints\n");

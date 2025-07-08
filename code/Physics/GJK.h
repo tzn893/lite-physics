@@ -9,6 +9,7 @@
 #include "Body.h"
 #include "Shapes.h"
 
+/*
 // 在计算凸包mikovski difference时，凸包上的某一点以及其对应在两个凸包上的点
 struct MkDifferencePoint
 {
@@ -44,10 +45,6 @@ struct MkDifferencePoint
 	}
 };
 
-struct ConvexTriangles
-{
-	int a, b, c;
-};
 
 class EPASolver
 {
@@ -63,10 +60,10 @@ private:
 	int FindClosestTriangle();
 
 	// 计算点到三角形上最近点的距离
-	float ClosestPointDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt);
+	float ClosestPointDistanceFromTriangle(const ConvexTriangle& tri, const Vec3& pt);
 
 	// 计算点投影到三角形对应平面上的有符号距离
-	float ProjectedSignedDistanceFromTriangle(const ConvexTriangles& tri, const Vec3& pt);
+	float ProjectedSignedDistanceFromTriangle(const ConvexTriangle& tri, const Vec3& pt);
 
 	// 检查一个新点是否已经在被构造的凸包内部
 	bool HasPoint(const MkDifferencePoint& pt);
@@ -78,13 +75,13 @@ private:
 	void FillTrianglesWithNewPoint();
 
 	std::vector<MkDifferencePoint> points;
-	std::vector<ConvexTriangles> triangles;
+	std::vector<ConvexTriangle> triangles;
 	Body* bodyA;
 	Body* bodyB;
 	float bias;
 };
 
-
+*/
 
 bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB );
 bool GJK_DoesIntersect( const Body * bodyA, const Body * bodyB, const float bias, Vec3 & ptOnA, Vec3 & ptOnB);
